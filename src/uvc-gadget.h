@@ -71,7 +71,8 @@ extern "C" {
 #endif
 
 #include "uvc_video.h"
-//#include "uvc_control.h"
+#include "uvc_control.h"
+#include "rkcam_control.h"
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -134,6 +135,7 @@ struct uvc_device {
     unsigned int fcc;
     unsigned int width;
     unsigned int height;
+    unsigned int fps;
 
     unsigned int bulk;
     uint8_t color;

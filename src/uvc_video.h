@@ -44,7 +44,7 @@ extern "C" {
 #include "uvc-gadget.h"
 
 #define UVC_BUFFER_NUM 3
-#define YUYV_AS_RAW 1
+#define YUYV_AS_RAW 0
 
 struct uvc_user {
     unsigned int width;

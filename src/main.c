@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "uvc-gadget.h"
+#include "rkcam_control.h"
 
 int main(void)
 {
@@ -7,7 +8,7 @@ int main(void)
     add_uvc_video();
     while (1) {
         uvc_control();
-        usleep(100000);
+        read_rkcam();
     }
     uvc_video_id_exit_all();
     return 0;

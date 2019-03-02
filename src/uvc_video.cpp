@@ -414,6 +414,7 @@ static int _uvc_buffer_init(struct uvc_video *v)
     v->uvc->id = 0;
     v->uvc->video_id = v->id;
     v->uvc->run = 1;
+    v->buffer_s = NULL;
     pthread_mutex_init(&v->uvc->write.mutex, NULL);
     pthread_mutex_init(&v->uvc->read.mutex, NULL);
     uvc_buffer_clear(&v->uvc->write);

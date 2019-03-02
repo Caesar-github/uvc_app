@@ -1396,6 +1396,7 @@ uvc_handle_streamon_event(struct uvc_device *dev)
         dev->is_streaming = 1;
     }
 
+    set_uvc_control_start(dev->video_id, dev->width, dev->height, dev->fps);
     return 0;
 
 err:
@@ -2830,6 +2831,7 @@ uvc_events_process_data(struct uvc_device *dev, struct uvc_request_data *data)
         dev->fcc = format->fcc;
         dev->width = frame->width;
         dev->height = frame->height;
+        dev->fps = 10000000 / target->dwFrameInterval;
 
         /*
          * Try to set the default format at the V4L2 video capture
@@ -2878,8 +2880,6 @@ uvc_events_process_data(struct uvc_device *dev, struct uvc_request_data *data)
             ret = uvc_handle_streamon_event(dev);
             if (ret < 0)
                 goto err;
-            set_uvc_control_start(dev->video_id, fmt.fmt.pix.width, fmt.fmt.pix.height,
-                                  10000000 / target->dwFrameInterval);
         }
     }
 
@@ -2951,6 +2951,7 @@ uvc_events_process(struct uvc_device *dev)
         }
 
         uvc_buffer_deinit(dev->video_id);
+        set_uvc_control_stop();
 
         return;
     }
