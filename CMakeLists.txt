@@ -14,6 +14,7 @@ set(SOURCE
     ext/mediactl.c
     src/rkcam_capture.c
     src/rkcam_control.c
+    src/mpi_enc.c
 )
 
 #set(CMAKE_C_FLAGS "-static ${CMAKE_C_FLAGS}")

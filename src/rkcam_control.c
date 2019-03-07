@@ -24,6 +24,8 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 struct uvc_encode uvc_enc;
 
+extern int uvc_video_id_get(unsigned int seq);
+
 int add_rkcam(int id, int width, int height)
 {
     int ret = 0;
@@ -67,8 +69,8 @@ void read_rkcam()
     pthread_mutex_lock(&lock);
     if (cam_cap.id >= 0) {
         uvc_enc.video_id = uvc_video_id_get(cam_cap.seq);
-        if (uvc_enc.video_id >= 0 && uvc_enc.out_virt) {
-            read_frame(cam_cap.fd, cam_cap.buffers, uvc_enc.out_virt);
+        if (uvc_enc.video_id >= 0 && uvc_enc.src_virt) {
+            read_frame(cam_cap.fd, cam_cap.buffers, uvc_enc.src_virt);
             uvc_encode_process(&uvc_enc);
         }
     }

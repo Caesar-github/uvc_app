@@ -37,27 +37,26 @@
 
 int uvc_encode_init(struct uvc_encode *e, int width, int height)
 {
+    printf("%s: width = %d, height = %d\n", __func__, width, height);
+    memset(e, 0, sizeof(*e));
     e->video_id = -1;
     e->width = -1;
     e->height = -1;
-    e->out_virt = malloc(width * height * 3 / 2);
-    if (!e->out_virt) {
-        printf("e->out_virt malloc fail!\n");
-        return -1;
-    }
     e->width = width;
     e->height = height;
+    e->src_virt = NULL;
+    mpi_enc_cmd_config_mjpg(&e->mpi_cmd, width, height);
+    if (mpi_enc_test_init(&e->mpi_cmd, &e->mpi_data) != MPP_OK)
+        return -1;
+    e->src_virt = mpp_buffer_get_ptr(e->mpi_data->frm_buf);
 
     return 0;
 }
 
 void uvc_encode_exit(struct uvc_encode *e)
 {
+    mpi_enc_test_deinit(&e->mpi_data);
     e->video_id = -1;
-    if (e->out_virt) {
-        free(e->out_virt);
-        e->out_virt = NULL;
-    }
     e->width = -1;
     e->height = -1;
 }
@@ -71,7 +70,7 @@ bool uvc_encode_process(struct uvc_encode *e)
     size_t extra_size = 0;
     int width, height;
     int jpeg_quant;
-    void* virt = e->out_virt;
+    void* virt = e->src_virt;
     void* hnd = NULL;
 
     if (!uvc_get_user_run_state(e->video_id) || !uvc_buffer_write_enable(e->video_id))
@@ -85,6 +84,10 @@ bool uvc_encode_process(struct uvc_encode *e)
         uvc_buffer_write(0, extra_data, extra_size, virt, size, fcc, e->video_id);
         break;
     case V4L2_PIX_FMT_MJPEG:
+        if (mpi_enc_test_run(&e->mpi_data) == MPP_OK) {
+            uvc_buffer_write(0, extra_data, extra_size,
+                             e->mpi_data->enc_data, e->mpi_data->enc_len, fcc, e->video_id);
+        }
         break;
     case V4L2_PIX_FMT_H264: 
         break;

@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 #include "uvc_control.h"
 #include "uvc_video.h"
 
@@ -112,11 +113,11 @@ static inline void uvc_control_driver(struct uvc_ctrl *ctrl, int seq)
 void uvc_control(void)
 {
     if (uvc_stop) {
-        uvc_video_id_exit_all();
+//        uvc_video_id_exit_all();
         //video_record_deinit(true);
         remove_rkcam();
         uvc_stop = false;
-        add_uvc_video();
+//        add_uvc_video();
     }
 //    uvc_control_driver(&uvc_ctrl[CIF_SEQ], CIF_SEQ);
     uvc_control_driver(&uvc_ctrl[ISP_SEQ], ISP_SEQ);

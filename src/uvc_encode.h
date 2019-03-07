@@ -38,12 +38,15 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
+#include "mpi_enc.h"
 
 struct uvc_encode {
     int width;
     int height;
-    void* out_virt;
+    void* src_virt;
     int video_id;
+    MpiEncTestCmd mpi_cmd;
+    MpiEncTestData *mpi_data;
 };
 
 int uvc_encode_init(struct uvc_encode *e, int width, int height);
