@@ -30,28 +30,30 @@
  * SOFTWARE.
  */
 
-#ifndef __UVC_ENCODE_H__
-#define __UVC_ENCODE_H__
+#ifndef __UVC_CONTROL_H__
+#define __UVC_CONTROL_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stdbool.h>
-#include "mpi_enc.h"
+#ifdef USE_RK_MODULE
+#define ISP_SEQ 1
+#define ISP_FMT HAL_FRMAE_FMT_NV12
+#define CIF_SEQ 0
+#define CIF_FMT HAL_FRMAE_FMT_SBGGR10
+#else
+#define ISP_SEQ 0
+#define ISP_FMT HAL_FRMAE_FMT_SBGGR8
+#define CIF_SEQ 1
+#define CIF_FMT HAL_FRMAE_FMT_NV12
+#endif
 
-struct uvc_encode {
-    int width;
-    int height;
-    void* src_virt;
-    int video_id;
-    MpiEncTestCmd mpi_cmd;
-    MpiEncTestData *mpi_data;
-};
-
-int uvc_encode_init(struct uvc_encode *e, int width, int height);
-void uvc_encode_exit(struct uvc_encode *e);
-bool uvc_encode_process(struct uvc_encode *e);
+void add_uvc_video();
+void check_video_id(void);
+void uvc_control_init(int width, int height);
+void uvc_control_exit();
+void uvc_read_camera_buffer(void *cam_buffer, size_t cam_size);
 
 #ifdef __cplusplus
 }

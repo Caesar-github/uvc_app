@@ -151,13 +151,13 @@ struct uvc_format_info {
 };
 
 static const struct uvc_frame_info uvc_frames_yuyv[] = {
-    {  640, 360, { 666666, 1000000, 2000000, 0 }, },
+    {  640, 480, { 666666, 1000000, 2000000, 0 }, },
     { 1280, 720, { 1000000, 2000000, 0 }, },
     { 0, 0, { 0, }, },
 };
 
 static const struct uvc_frame_info uvc_frames_mjpeg[] = {
-    {  640, 360, { 666666, 1000000, 2000000, 0 }, },
+    {  640, 480, { 666666, 1000000, 2000000, 0 }, },
     { 1280, 720, { 1000000, 2000000, 0 }, },
 //    { 1920, 1080, { 333333, 500000, 666666, 1000000, 1333333, 0 }, },
     { 0, 0, { 0, }, },
@@ -171,7 +171,7 @@ static const struct uvc_frame_info uvc_frames_h264[] = {
 };
 
 static const struct uvc_format_info uvc_formats[] = {
-    { V4L2_PIX_FMT_YUYV, uvc_frames_yuyv },
+//    { V4L2_PIX_FMT_YUYV, uvc_frames_yuyv },
     { V4L2_PIX_FMT_MJPEG, uvc_frames_mjpeg },
 //    { V4L2_PIX_FMT_H264, uvc_frames_h264 },
 };
@@ -1396,7 +1396,7 @@ uvc_handle_streamon_event(struct uvc_device *dev)
         dev->is_streaming = 1;
     }
 
-    set_uvc_control_start(dev->video_id, dev->width, dev->height, dev->fps);
+    uvc_control_init(dev->width, dev->height);
     return 0;
 
 err:
@@ -2951,7 +2951,7 @@ uvc_events_process(struct uvc_device *dev)
         }
 
         uvc_buffer_deinit(dev->video_id);
-        set_uvc_control_stop();
+        uvc_control_exit();
 
         return;
     }
@@ -3366,7 +3366,7 @@ uvc_gadget_main(int id)
             ret = select(nfds + 1, &fdsv, &dfds, &efds, &tv);
         } else {
             ret = select(udev->uvc_fd + 1, NULL,
-                         &dfds, &efds, &tv);
+                         &dfds, &efds, NULL);
         }
 
         if (-1 == ret) {

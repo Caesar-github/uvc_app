@@ -28,6 +28,7 @@ static OptionInfo mpi_enc_cmd[] = {
     {"d",               "debug",                "debug flag"},
 };
 #endif
+static MppFrameFormat g_format = MPP_FMT_YUV420SP;
 
 static MPP_RET test_ctx_init(MpiEncTestData **data, MpiEncTestCmd *cmd)
 {
@@ -580,6 +581,11 @@ void mpi_enc_cmd_config_mjpg(MpiEncTestCmd *cmd, int width, int height)
     memset((void*)cmd, 0, sizeof(*cmd));
     cmd->width = width;
     cmd->height = height;
-    cmd->format = MPP_FMT_YUV420SP;
+    cmd->format = g_format;
     cmd->type = MPP_VIDEO_CodingMJPEG;
+}
+
+void mpi_enc_set_format(MppFrameFormat format)
+{
+    g_format = format;
 }

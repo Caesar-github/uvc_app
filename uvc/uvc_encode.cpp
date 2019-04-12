@@ -49,6 +49,7 @@ int uvc_encode_init(struct uvc_encode *e, int width, int height)
     if (mpi_enc_test_init(&e->mpi_cmd, &e->mpi_data) != MPP_OK)
         return -1;
     e->src_virt = mpp_buffer_get_ptr(e->mpi_data->frm_buf);
+    e->src_size = mpp_buffer_get_size(e->mpi_data->frm_buf);
 
     return 0;
 }

@@ -105,6 +105,7 @@ MPP_RET mpi_enc_test_init(MpiEncTestCmd *cmd, MpiEncTestData **data);
 MPP_RET mpi_enc_test_run(MpiEncTestData **data);
 MPP_RET mpi_enc_test_deinit(MpiEncTestData **data);
 void mpi_enc_cmd_config_mjpg(MpiEncTestCmd *cmd, int width, int height);
+void mpi_enc_set_format(MppFrameFormat format);
 
 #ifdef __cplusplus
 }

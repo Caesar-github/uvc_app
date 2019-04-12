@@ -35,39 +35,47 @@
 #include <string.h>
 #include <stdlib.h>
 #include "uvc_control.h"
+#include "uvc_encode.h"
 #include "uvc_video.h"
 
-#define SYS_UVC_NAME "ff300000.usb"
-#define SYS_ISP_NAME "rkisp1_mainpath"
-#define SYS_CIF_NAME "stream_cif"
+#define SYS_ISP_NAME "isp"
+#define SYS_CIF_NAME "cif"
 
 struct uvc_ctrl {
-    int out;
-    int in;
-    bool start;
-    bool stop; //unused
+    int id;
     int width;
     int height;
     int fps;
 };
 
-static struct uvc_ctrl uvc_ctrl[2] = {
-    {-1, -1, false, false, -1, -1, -1},
-    {-1, -1, false, false, -1, -1, -1},
-};
-static bool uvc_stop = false;
+static struct uvc_ctrl uvc_ctrl[2];
+struct uvc_encode uvc_enc;
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+static bool is_uvc_video(void *buf)
+{
+    if (strstr(buf, "usb") || strstr(buf, "gadget"))
+        return true;
+    else
+        return false;
+}
 
 void check_video_id(void)
 {
     FILE *fp = NULL;
     char buf[1024];
     bool exist = false;
+    bool isp_exist = false;
+    bool cif_exist = false;
+    int i = 5;
 
-    while (!exist) {
+    memset(&uvc_ctrl, 0, sizeof(uvc_ctrl));
+    while (!exist && i--) {
+        printf("%s\n", __func__);
         fp = popen("cat /sys/class/video4linux/video*/name", "r");
         if (fp) {
             while (fgets(buf, sizeof(buf), fp)) {
-                if (!strncmp(buf, SYS_UVC_NAME, strlen(SYS_UVC_NAME))) {
+                if (is_uvc_video(buf)) {
                     exist = true;
                     break;
                 }
@@ -77,20 +85,17 @@ void check_video_id(void)
             printf("/sys/class/video4linux/video*/name isn't exist.\n");
             abort();
         }
+        usleep(100000);
     }
     fp = popen("cat /sys/class/video4linux/video*/name", "r");
     if (fp) {
         int id = 0;
         while (fgets(buf, sizeof(buf), fp)) {
-            if (!strncmp(buf, SYS_ISP_NAME, strlen(SYS_ISP_NAME)))
-                uvc_ctrl[ISP_SEQ].in = id;
-            else if (!strncmp(buf, SYS_CIF_NAME, strlen(SYS_CIF_NAME)))
-                uvc_ctrl[CIF_SEQ].in = id;
-            else if (!strncmp(buf, SYS_UVC_NAME, strlen(SYS_UVC_NAME))) {
-                if (uvc_ctrl[0].out == -1)
-                    uvc_ctrl[0].out = id;
-                else if (uvc_ctrl[1].out == -1)
-                    uvc_ctrl[1].out = id;
+            if (is_uvc_video(buf)) {
+                if (!uvc_ctrl[0].id)
+                    uvc_ctrl[0].id = id;
+                else if (!uvc_ctrl[1].id)
+                    uvc_ctrl[1].id = id;
                 else
                     printf("unexpect uvc video!\n");
             }
@@ -100,55 +105,47 @@ void check_video_id(void)
     }
 }
 
-static inline void uvc_control_driver(struct uvc_ctrl *ctrl, int seq)
-{
-    int width = (seq == 0 ? ctrl->width * 2 : ctrl->width);
-    if (ctrl->start) {
-        //video_record_addvideo(ctrl->in, width, ctrl->height, ctrl->fps);
-        add_rkcam(ctrl->in, ctrl->width, ctrl->height);
-        ctrl->start = false;
-    }
-}
-
-void uvc_control(void)
-{
-    if (uvc_stop) {
-//        uvc_video_id_exit_all();
-        //video_record_deinit(true);
-        remove_rkcam();
-        uvc_stop = false;
-//        add_uvc_video();
-    }
-//    uvc_control_driver(&uvc_ctrl[CIF_SEQ], CIF_SEQ);
-    uvc_control_driver(&uvc_ctrl[ISP_SEQ], ISP_SEQ);
-}
-
-void set_uvc_control_start(int video_id, int width, int height, int fps)
-{
-    if (uvc_video_id_get(CIF_SEQ) == video_id) {
-        uvc_ctrl[CIF_SEQ].width = width;
-        uvc_ctrl[CIF_SEQ].height = height;
-        uvc_ctrl[CIF_SEQ].fps = fps;
-        uvc_ctrl[CIF_SEQ].start = true;
-    } else if (uvc_video_id_get(ISP_SEQ) == video_id) {
-        uvc_ctrl[ISP_SEQ].width = width;
-        uvc_ctrl[ISP_SEQ].height = height;
-        uvc_ctrl[ISP_SEQ].fps = fps;
-        uvc_ctrl[ISP_SEQ].start = true;
-    } else
-        printf("unexpect uvc!");
-}
-
-void set_uvc_control_stop(void)
-{
-    uvc_stop = true;
-}
-
 void add_uvc_video()
 {
-    if (uvc_ctrl[0].out != -1)
-        uvc_video_id_add(uvc_ctrl[0].out);
-    if (uvc_ctrl[1].out != -1)
-        uvc_video_id_add(uvc_ctrl[1].out);
+    if (uvc_ctrl[0].id)
+        uvc_video_id_add(uvc_ctrl[0].id);
+    if (uvc_ctrl[1].id)
+        uvc_video_id_add(uvc_ctrl[1].id);
 }
 
+void uvc_control_init(int width, int height)
+{
+    pthread_mutex_lock(&lock);
+    memset(&uvc_enc, 0, sizeof(uvc_enc));
+    if (uvc_encode_init(&uvc_enc, width, height)) {
+        printf("%s fail!\n", __func__);
+        abort();
+    }
+    pthread_mutex_unlock(&lock);
+}
+
+void uvc_control_exit()
+{
+    pthread_mutex_lock(&lock);
+    uvc_encode_exit(&uvc_enc);
+    memset(&uvc_enc, 0, sizeof(uvc_enc));
+    pthread_mutex_unlock(&lock);
+}
+
+void uvc_read_camera_buffer(void *cam_buffer, size_t cam_size)
+{
+    void *buffer = NULL;
+    size_t size;
+
+    pthread_mutex_lock(&lock);
+    buffer = uvc_enc.src_virt;
+    size = uvc_enc.src_size;
+    if (buffer && cam_size <= size) {
+        memcpy(buffer, cam_buffer, cam_size);
+        uvc_enc.video_id = uvc_video_id_get(0);
+        uvc_encode_process(&uvc_enc);
+    } else if (size) {
+        printf("%s: size = %d, cam_size = %d\n", __func__, size, cam_size);
+    }
+    pthread_mutex_unlock(&lock);
+}

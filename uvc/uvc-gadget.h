@@ -72,7 +72,6 @@ extern "C" {
 
 #include "uvc_video.h"
 #include "uvc_control.h"
-#include "rkcam_control.h"
 
 #include <stddef.h>
 #include <stdbool.h>
