@@ -46,11 +46,11 @@
 #define UVC_EVENT_DATA          (V4L2_EVENT_PRIVATE_START + 5)
 #define UVC_EVENT_LAST          (V4L2_EVENT_PRIVATE_START + 5)
 
-#define MAX_UVC_REQUEST_DATA_LENGTH	4096
+#define MAX_UVC_REQUEST_DATA_LENGTH	60
 
 struct uvc_request_data {
     __s32 length;
-    __u8 data[MAX_UVC_REQUEST_DATA_LENGTH];
+    __u8 data[60];
 };
 
 struct uvc_event {

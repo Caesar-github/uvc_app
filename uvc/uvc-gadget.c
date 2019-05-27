@@ -1476,7 +1476,7 @@ uvc_events_process_standard(struct uvc_device *dev,
 static void
 uvc_events_process_control(struct uvc_device *dev, uint8_t req,
                            uint8_t cs, uint8_t entity_id,
-                           uint16_t len, struct uvc_request_data *resp)
+                           uint8_t len, struct uvc_request_data *resp)
 {
     printf("req = %d cs = %d entity_id =%d len = %d \n", req, cs, entity_id, len);
     dev->cs = cs;
