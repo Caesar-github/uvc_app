@@ -60,7 +60,7 @@ static bool is_uvc_video(void *buf)
         return false;
 }
 
-void check_video_id(void)
+int check_uvc_video_id(void)
 {
     FILE *fp = NULL;
     char buf[1024];
@@ -70,7 +70,7 @@ void check_video_id(void)
     int i = 5;
 
     memset(&uvc_ctrl, 0, sizeof(uvc_ctrl));
-    while (!exist && i--) {
+    while (i--) {
         printf("%s\n", __func__);
         fp = popen("cat /sys/class/video4linux/video*/name", "r");
         if (fp) {
@@ -83,10 +83,16 @@ void check_video_id(void)
             pclose(fp);
         } else {
             printf("/sys/class/video4linux/video*/name isn't exist.\n");
-            abort();
+            return -1;
         }
         usleep(100000);
     }
+
+    if (!exist) {
+        printf("not uvc node exist, quit\n");
+        return -1;
+    }
+
     fp = popen("cat /sys/class/video4linux/video*/name", "r");
     if (fp) {
         int id = 0;
@@ -103,6 +109,8 @@ void check_video_id(void)
         }
         pclose(fp);
     }
+
+    return 0;
 }
 
 void add_uvc_video()
