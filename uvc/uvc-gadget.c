@@ -1082,13 +1082,6 @@ uvc_video_qbuf_mmap(struct uvc_device *dev)
         dev->mem[i].buf.memory = V4L2_MEMORY_MMAP;
         dev->mem[i].buf.index = i;
 
-        /* UVC standalone setup. */
-        if (dev->run_standalone) {
-            //uvc_video_fill_buffer(dev, &(dev->mem[i].buf));
-            dev->mem[i].buf.bytesused = dev->width * dev->height * 2;
-            memset(dev->mem[i].start, 0, dev->mem[i].buf.bytesused);
-        }
-
         ret = ioctl(dev->uvc_fd, VIDIOC_QBUF, &(dev->mem[i].buf));
         if (ret < 0) {
             printf("UVC: VIDIOC_QBUF failed : %s (%d).\n",
