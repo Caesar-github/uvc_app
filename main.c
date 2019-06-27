@@ -10,37 +10,47 @@ void register_callback_for_uvc(callback_for_uvc cb)
     cb_for_uvc = cb;
 }
 
-#define BUFFER_WIDTH 640
-#define BUFFER_HEIGHT 480
-
-int main(void)
+int main(int argc, char* argv[])
 {
-    void *buffer;
+    char *buffer;
     size_t size;
     int i = 0;
-    FILE *fp;
-    char name[] = "/usr/bin/test_image.nv12";
+    int width, height;
+    int y, uv;
+    if (argc != 3) {
+        printf("Usage: uvc_app width height\n");
+        printf("e.g. uvc_app 640 480\n");
+        return -1;
+    }
+    width = atoi(argv[1]);
+    height = atoi(argv[2]);
+    if (width == 0 || height == 0) {
+        printf("Usage: uvc_app width height\n");
+        printf("e.g. uvc_app 640 480\n");
+        return -1;
+    }
     if (!check_uvc_video_id()) {
-        mpi_enc_set_format(MPP_FMT_YUV420P);
         add_uvc_video();
         register_callback_for_uvc(uvc_read_camera_buffer);
-        size = 640 * 480 * 3 / 2;
-        buffer = malloc(size);
+        size = width * height * 3 / 2;
+        buffer = (char*)malloc(size);
         if (!buffer) {
             printf("buffer alloc fail.\n");
             return -1;
         }
-        fp = fopen(name, "rb");
-        if (!fp) {
-            printf("open %s fail.\n", name);
-            memset(buffer, 0, size);
-        } else {
-            fread(buffer, 1, size, fp);
-            fclose(fp);
-        }
+        y = width * height / 4;
+        memset(buffer, 128, y);
+        memset(buffer + y, 64, y);
+        memset(buffer + y * 2, 128, y);
+        memset(buffer + y * 3, 192, y);
+        uv = width * height / 8;
+        memset(buffer + y * 4, 0, uv);
+        memset(buffer + y * 4 + uv, 64, uv);
+        memset(buffer + y * 4 + uv * 2, 128, uv);
+        memset(buffer + y * 4 + uv * 3, 192, uv);
         while(1) {
             if (cb_for_uvc)
-	    cb_for_uvc(buffer, size);
+                cb_for_uvc(buffer, size);
             usleep(30000);
        }
       uvc_video_id_exit_all();
