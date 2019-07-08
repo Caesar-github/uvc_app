@@ -4,7 +4,8 @@
 #include "uvc_video.h"
 #include "mpi_enc.h"
 
-typedef void (*callback_for_uvc)(const void *buffer, size_t size);
+typedef void (*callback_for_uvc)(const void *buffer, size_t size,
+                                 void* extra_data, size_t extra_size);
 callback_for_uvc cb_for_uvc = NULL;
 void register_callback_for_uvc(callback_for_uvc cb)
 {
@@ -18,6 +19,7 @@ int main(int argc, char* argv[])
     int i = 0;
     int width, height;
     int y, uv;
+    int extra_cnt = 0;
     if (argc != 3) {
         printf("Usage: uvc_app width height\n");
         printf("e.g. uvc_app 640 480\n");
@@ -51,8 +53,9 @@ int main(int argc, char* argv[])
     register_callback_for_uvc(uvc_read_camera_buffer);
     uvc_control_run();
     while(1) {
+        extra_cnt++;
         if (cb_for_uvc)
-            cb_for_uvc(buffer, size);
+            cb_for_uvc(buffer, size, &extra_cnt, sizeof(extra_cnt));
         usleep(30000);
     }
     uvc_control_join();

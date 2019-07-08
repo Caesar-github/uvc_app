@@ -154,7 +154,8 @@ void uvc_control_exit()
     pthread_mutex_unlock(&lock);
 }
 
-void uvc_read_camera_buffer(const void *cam_buffer, size_t cam_size)
+void uvc_read_camera_buffer(const void *cam_buffer, size_t cam_size,
+                            void* extra_data, size_t extra_size)
 {
     void *buffer = NULL;
     size_t size;
@@ -165,6 +166,8 @@ void uvc_read_camera_buffer(const void *cam_buffer, size_t cam_size)
     if (buffer && cam_size <= size) {
         memcpy(buffer, cam_buffer, cam_size);
         uvc_enc.video_id = uvc_video_id_get(0);
+        uvc_enc.extra_data = extra_data;
+        uvc_enc.extra_size = extra_size;
         uvc_encode_process(&uvc_enc);
     } else if (size) {
         printf("%s: size = %d, cam_size = %d\n", __func__, size, cam_size);

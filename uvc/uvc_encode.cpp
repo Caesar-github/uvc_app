@@ -67,8 +67,6 @@ bool uvc_encode_process(struct uvc_encode *e)
     int ret = 0;
     unsigned int fcc;
     int size;
-    void* extra_data = nullptr;
-    size_t extra_size = 0;
     int width, height;
     int jpeg_quant;
     void* virt = e->src_virt;
@@ -82,11 +80,11 @@ bool uvc_encode_process(struct uvc_encode *e)
     switch (fcc) {
     case V4L2_PIX_FMT_YUYV:
         size = width * height * 2;
-        uvc_buffer_write(0, extra_data, extra_size, virt, size, fcc, e->video_id);
+        uvc_buffer_write(0, NULL, 0, virt, size, fcc, e->video_id);
         break;
     case V4L2_PIX_FMT_MJPEG:
         if (mpi_enc_test_run(&e->mpi_data) == MPP_OK) {
-            uvc_buffer_write(0, extra_data, extra_size,
+            uvc_buffer_write(0, e->extra_data, e->extra_size,
                              e->mpi_data->enc_data, e->mpi_data->enc_len, fcc, e->video_id);
         }
         break;

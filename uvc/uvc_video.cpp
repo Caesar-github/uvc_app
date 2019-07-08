@@ -515,6 +515,8 @@ bool uvc_buffer_write_enable(int id)
     return ret;
 }
 
+#define EX_MAX_LEN 65535
+#define EX_DATA_LEN (EX_MAX_LEN - 2)
 static void _uvc_buffer_write(struct uvc_video *v,
                               unsigned short stamp,
                               void* extra_data,
@@ -523,6 +525,7 @@ static void _uvc_buffer_write(struct uvc_video *v,
                               size_t size,
                               unsigned int fcc)
 {
+    const size_t cnt = extra_size / (EX_DATA_LEN + 1) + 1;
     pthread_mutex_lock(&v->buffer_mutex);
     if (v->uvc && data) {
         struct uvc_buffer* buffer = uvc_buffer_pop_front(&v->uvc->write);
@@ -541,7 +544,46 @@ static void _uvc_buffer_write(struct uvc_video *v,
 #endif
                     break;
                 case V4L2_PIX_FMT_MJPEG:
-                    memcpy(buffer->buffer, data, size);
+                    if (extra_data && buffer->total_size >= extra_size + size + 4 * cnt) {
+                        size_t index = 4;// FF D8 FF E0
+                        size_t len = *((unsigned char*)data + index);
+                        len = len * 256 + *((unsigned char*)data + index + 1);
+                        index = index + len;
+                        memcpy(buffer->buffer, data, index);
+                        size_t ind = index;
+                        for (size_t i = 1; i < cnt; i++) {
+                            memset((char*)buffer->buffer + ind, 0xFF, 1);
+                            ind++;
+                            memset((char*)buffer->buffer + ind, 0xE2, 1);
+                            ind++;
+                            memset((char*)buffer->buffer + ind, EX_MAX_LEN / 256, 1);
+                            ind++;
+                            memset((char*)buffer->buffer + ind, EX_MAX_LEN % 256, 1);
+                            ind++;
+                            memcpy((char*)buffer->buffer + ind,
+                                   (char*)extra_data + (i - 1) * EX_DATA_LEN, EX_DATA_LEN);
+                            ind += EX_DATA_LEN;
+                        }
+                        memset((char*)buffer->buffer + ind, 0xFF, 1);
+                        ind ++;
+                        memset((char*)buffer->buffer + ind, 0xE2, 1);
+                        ind++;
+                        memset((char*)buffer->buffer + ind,
+                               (2 + extra_size - EX_DATA_LEN * (cnt - 1)) / 256, 1);
+                        ind++;
+                        memset((char*)buffer->buffer + ind,
+                               (2 + extra_size - EX_DATA_LEN * (cnt - 1)) % 256, 1);
+                        ind++;
+                        memcpy((char*)buffer->buffer + ind,
+                               (char*)extra_data + EX_DATA_LEN * (cnt - 1),
+                               extra_size - EX_DATA_LEN * (cnt - 1));
+                        ind += extra_size - EX_DATA_LEN * (cnt - 1);
+                        memcpy((char*)buffer->buffer + ind,
+                                (char*)data + index, size - index);
+                        extra_size += 4 * cnt;
+                    } else {
+                        memcpy(buffer->buffer, data, size);
+                    }
                     //memcpy((char*)buffer->buffer + size, &stamp, sizeof(stamp));
                     //size += sizeof(stamp);
                     break;
