@@ -34,12 +34,14 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include "uvc_control.h"
 #include "uvc_encode.h"
 #include "uvc_video.h"
 
 #define SYS_ISP_NAME "isp"
 #define SYS_CIF_NAME "cif"
+#define UVC_STREAMING_INTF_PATH "/sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming_intf"
 
 struct uvc_ctrl {
     int id;
@@ -51,6 +53,7 @@ struct uvc_ctrl {
 static struct uvc_ctrl uvc_ctrl[2];
 struct uvc_encode uvc_enc;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static int uvc_streaming_intf = -1;
 
 static bool is_uvc_video(void *buf)
 {
@@ -58,6 +61,27 @@ static bool is_uvc_video(void *buf)
         return true;
     else
         return false;
+}
+
+static void query_uvc_streaming_intf(void)
+{
+    int fd;
+
+    fd = open(UVC_STREAMING_INTF_PATH, O_RDONLY);
+    if (fd >= 0) {
+        char intf[32] = {0};
+        read(fd, intf, sizeof(intf) - 1);
+        uvc_streaming_intf = atoi(intf);
+        printf("uvc_streaming_intf = %d\n", uvc_streaming_intf);
+        close(fd);
+    } else {
+        printf("open %s failed!\n", UVC_STREAMING_INTF_PATH);
+    }
+}
+
+int get_uvc_streaming_intf(void)
+{
+    return uvc_streaming_intf;
 }
 
 int check_uvc_video_id(void)
@@ -110,6 +134,7 @@ int check_uvc_video_id(void)
         pclose(fp);
     }
 
+    query_uvc_streaming_intf();
     return 0;
 }
 

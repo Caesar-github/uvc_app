@@ -2569,21 +2569,14 @@ uvc_events_process_class(struct uvc_device *dev, struct usb_ctrlrequest *ctrl,
     if ((ctrl->bRequestType & USB_RECIP_MASK) != USB_RECIP_INTERFACE)
         return;
 
-    switch ((ctrl->wIndex & 0xff) % 2) {
-    case UVC_INTF_CONTROL:
+    if ((ctrl->wIndex & 0xff) % 2 != get_uvc_streaming_intf() % 2) {
         uvc_events_process_control(dev, ctrl->bRequest,
                                    ctrl->wValue >> 8,
                                    ctrl->wIndex >> 8,
                                    ctrl->wLength, resp);
-        break;
-
-    case UVC_INTF_STREAMING:
+    } else {
         uvc_events_process_streaming(dev, ctrl->bRequest,
                                      ctrl->wValue >> 8, resp);
-        break;
-
-    default:
-        break;
     }
 }
 
