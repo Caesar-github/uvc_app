@@ -6,16 +6,22 @@
 #fi
 /etc/init.d/S10udev stop
 
+umount /sys/kernel/config
+mount -t configfs none /sys/kernel/config
+mkdir -p /sys/kernel/config/usb_gadget/rockchip
+mkdir -p /sys/kernel/config/usb_gadget/rockchip/strings/0x409
+mkdir -p /sys/kernel/config/usb_gadget/rockchip/configs/b.1/strings/0x409
+
 echo 0x2207 > /sys/kernel/config/usb_gadget/rockchip/idVendor
 echo 0x0310 > /sys/kernel/config/usb_gadget/rockchip/bcdDevice
 echo 0x0200 > /sys/kernel/config/usb_gadget/rockchip/bcdUSB
 
-cat /sys/kernel/config/usb_gadget/rockchip/strings/0x409/serialnumber
-cat /sys/kernel/config/usb_gadget/rockchip/strings/0x409/manufacturer
-cat /sys/kernel/config/usb_gadget/rockchip/strings/0x409/product
+echo "2019" > /sys/kernel/config/usb_gadget/rockchip/strings/0x409/serialnumber
+echo "rockchip" > /sys/kernel/config/usb_gadget/rockchip/strings/0x409/manufacturer
+echo "UVC" > /sys/kernel/config/usb_gadget/rockchip/strings/0x409/product
 
 mkdir /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6
-cat /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming_maxpacket
+#cat /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming_maxpacket
 
 mkdir /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/control/header/h
 ln -s /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/control/header/h /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/control/class/fs/h
@@ -68,7 +74,7 @@ cat <<EOF > /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/m
 EOF
 
 mkdir /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/header/h
-ln -s /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/uncompressed/u /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/header/h/u
+#ln -s /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/uncompressed/u /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/header/h/u
 ln -s /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/mjpeg/m /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/header/h/m
 ln -s /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/header/h /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/class/fs/h
 ln -s /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/header/h /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/class/hs/h
@@ -81,7 +87,7 @@ ln -s /sys/kernel/config/usb_gadget/rockchip/configs/b.1 /sys/kernel/config/usb_
 
 echo 0x0005 > /sys/kernel/config/usb_gadget/rockchip/idProduct
 echo "uvc" > /sys/kernel/config/usb_gadget/rockchip/configs/b.1/strings/0x409/configuration
-rm /sys/kernel/config/usb_gadget/rockchip/configs/b.1/ffs.adb
+rm -f /sys/kernel/config/usb_gadget/rockchip/configs/b.1/ffs.adb
 ln -s /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6 /sys/kernel/config/usb_gadget/rockchip/configs/b.1/f1
 
 UDC=`ls /sys/class/udc/| awk '{print $1}'`
