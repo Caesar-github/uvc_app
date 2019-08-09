@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "uvc_control.h"
+#include "uvc_video.h"
 #include "mpi_enc.h"
 
-typedef void (*callback_for_uvc)(void *buffer, size_t size);
+typedef void (*callback_for_uvc)(const void *buffer, size_t size);
 callback_for_uvc cb_for_uvc = NULL;
 void register_callback_for_uvc(callback_for_uvc cb)
 {

@@ -53,7 +53,7 @@ void add_uvc_video();
 int check_uvc_video_id(void);
 void uvc_control_init(int width, int height);
 void uvc_control_exit();
-void uvc_read_camera_buffer(void *cam_buffer, size_t cam_size);
+void uvc_read_camera_buffer(const void *cam_buffer, size_t cam_size);
 int get_uvc_streaming_intf(void);
 
 #ifdef __cplusplus

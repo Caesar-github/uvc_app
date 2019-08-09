@@ -41,10 +41,12 @@ extern "C" {
 #include <stdbool.h>
 #include <stddef.h>
 #include <unistd.h>
-#include "uvc-gadget.h"
+#include <linux/videodev2.h>
 
 #define UVC_BUFFER_NUM 3
 #define YUYV_AS_RAW 0
+
+struct uvc_device;
 
 struct uvc_user {
     unsigned int width;

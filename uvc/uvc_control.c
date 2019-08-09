@@ -165,7 +165,7 @@ void uvc_control_exit()
     pthread_mutex_unlock(&lock);
 }
 
-void uvc_read_camera_buffer(void *cam_buffer, size_t cam_size)
+void uvc_read_camera_buffer(const void *cam_buffer, size_t cam_size)
 {
     void *buffer = NULL;
     size_t size;
