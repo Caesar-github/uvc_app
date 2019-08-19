@@ -35,9 +35,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include "uvc_control.h"
 #include "uvc_encode.h"
 #include "uvc_video.h"
+#include "uevent.h"
 
 #define SYS_ISP_NAME "isp"
 #define SYS_CIF_NAME "cif"
@@ -54,6 +56,11 @@ static struct uvc_ctrl uvc_ctrl[2];
 struct uvc_encode uvc_enc;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static int uvc_streaming_intf = -1;
+
+static pthread_t run_id = 0;
+static bool run_flag = true;
+static pthread_mutex_t run_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t run_cond = PTHREAD_COND_INITIALIZER;
 
 static bool is_uvc_video(void *buf)
 {
@@ -88,61 +95,43 @@ int check_uvc_video_id(void)
 {
     FILE *fp = NULL;
     char buf[1024];
-    bool exist = false;
-    bool isp_exist = false;
-    bool cif_exist = false;
-    int i = 5;
+    int i;
+    char cmd[128];
 
     memset(&uvc_ctrl, 0, sizeof(uvc_ctrl));
-    while (i--) {
-        printf("%s\n", __func__);
-        fp = popen("cat /sys/class/video4linux/video*/name", "r");
+    uvc_ctrl[0].id = -1;
+    uvc_ctrl[1].id = -1;
+    for (i = 0; i < 20; i++) {
+        snprintf(cmd, sizeof(cmd), "/sys/class/video4linux/video%d/name", i);
+        if (access(cmd, F_OK))
+            continue;
+        snprintf(cmd, sizeof(cmd), "cat /sys/class/video4linux/video%d/name", i);
+        fp = popen(cmd, "r");
         if (fp) {
-            while (fgets(buf, sizeof(buf), fp)) {
+            if (fgets(buf, sizeof(buf), fp)) {
                 if (is_uvc_video(buf)) {
-                    exist = true;
-                    break;
+                    if (uvc_ctrl[0].id < 0)
+                        uvc_ctrl[0].id = i;
+                    else if (uvc_ctrl[1].id < 0)
+                        uvc_ctrl[1].id = i;
                 }
             }
             pclose(fp);
-        } else {
-            printf("/sys/class/video4linux/video*/name isn't exist.\n");
-            return -1;
         }
-        usleep(100000);
     }
-
-    if (!exist) {
-        printf("not uvc node exist, quit\n");
+    if (uvc_ctrl[0].id < 0 && uvc_ctrl[1].id < 0) {
+        printf("Please configure uvc...\n");
         return -1;
     }
-
-    fp = popen("cat /sys/class/video4linux/video*/name", "r");
-    if (fp) {
-        int id = 0;
-        while (fgets(buf, sizeof(buf), fp)) {
-            if (is_uvc_video(buf)) {
-                if (!uvc_ctrl[0].id)
-                    uvc_ctrl[0].id = id;
-                else if (!uvc_ctrl[1].id)
-                    uvc_ctrl[1].id = id;
-                else
-                    printf("unexpect uvc video!\n");
-            }
-            id++;
-        }
-        pclose(fp);
-    }
-
     query_uvc_streaming_intf();
     return 0;
 }
 
 void add_uvc_video()
 {
-    if (uvc_ctrl[0].id)
+    if (uvc_ctrl[0].id >= 0)
         uvc_video_id_add(uvc_ctrl[0].id);
-    if (uvc_ctrl[1].id)
+    if (uvc_ctrl[1].id >= 0)
         uvc_video_id_add(uvc_ctrl[1].id);
 }
 
@@ -181,4 +170,50 @@ void uvc_read_camera_buffer(void *cam_buffer, size_t cam_size)
         printf("%s: size = %d, cam_size = %d\n", __func__, size, cam_size);
     }
     pthread_mutex_unlock(&lock);
+}
+
+static void uvc_control_wait(void)
+{
+    pthread_mutex_lock(&run_mutex);
+    if (run_flag)
+        pthread_cond_wait(&run_cond, &run_mutex);
+    pthread_mutex_unlock(&run_mutex);
+}
+
+void uvc_control_signal(void)
+{
+    pthread_mutex_lock(&run_mutex);
+    pthread_cond_signal(&run_cond);
+    pthread_mutex_unlock(&run_mutex);
+}
+
+static void *uvc_control_thread(void *arg)
+{
+    while (run_flag) {
+        if (!check_uvc_video_id()) {
+            add_uvc_video();
+            uvc_control_wait();
+            uvc_video_id_exit_all();
+        } else {
+            uvc_control_wait();
+        }
+    }
+    pthread_exit(NULL);
+}
+
+int uvc_control_run(void)
+{
+    uevent_monitor_run();
+    if (pthread_create(&run_id, NULL, uvc_control_thread, NULL)) {
+        printf("%s: pthread_create failed!\n", __func__);
+        return -1;
+    }
+    return 0;
+}
+
+void uvc_control_join(void)
+{
+    run_flag = false;
+    uvc_control_signal();
+    pthread_join(run_id, NULL);
 }

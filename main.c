@@ -29,34 +29,31 @@ int main(int argc, char* argv[])
         printf("e.g. uvc_app 640 480\n");
         return -1;
     }
-    if (!check_uvc_video_id()) {
-        add_uvc_video();
-        register_callback_for_uvc(uvc_read_camera_buffer);
-        size = width * height * 3 / 2;
-        buffer = (char*)malloc(size);
-        if (!buffer) {
-            printf("buffer alloc fail.\n");
-            return -1;
-        }
-        y = width * height / 4;
-        memset(buffer, 128, y);
-        memset(buffer + y, 64, y);
-        memset(buffer + y * 2, 128, y);
-        memset(buffer + y * 3, 192, y);
-        uv = width * height / 8;
-        memset(buffer + y * 4, 0, uv);
-        memset(buffer + y * 4 + uv, 64, uv);
-        memset(buffer + y * 4 + uv * 2, 128, uv);
-        memset(buffer + y * 4 + uv * 3, 192, uv);
-        while(1) {
-            if (cb_for_uvc)
-                cb_for_uvc(buffer, size);
-            usleep(30000);
-       }
-      uvc_video_id_exit_all();
-      return 0;
-    } else {
-        printf("not uvc video support\n");
+
+    size = width * height * 3 / 2;
+    buffer = (char*)malloc(size);
+    if (!buffer) {
+        printf("buffer alloc fail.\n");
         return -1;
     }
+    y = width * height / 4;
+    memset(buffer, 128, y);
+    memset(buffer + y, 64, y);
+    memset(buffer + y * 2, 128, y);
+    memset(buffer + y * 3, 192, y);
+    uv = width * height / 8;
+    memset(buffer + y * 4, 0, uv);
+    memset(buffer + y * 4 + uv, 64, uv);
+    memset(buffer + y * 4 + uv * 2, 128, uv);
+    memset(buffer + y * 4 + uv * 3, 192, uv);
+
+    register_callback_for_uvc(uvc_read_camera_buffer);
+    uvc_control_run();
+    while(1) {
+        if (cb_for_uvc)
+            cb_for_uvc(buffer, size);
+        usleep(30000);
+    }
+    uvc_control_join();
+    return 0;
 }
