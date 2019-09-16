@@ -30,37 +30,18 @@
  * SOFTWARE.
  */
 
-#ifndef __UVC_CONTROL_H__
-#define __UVC_CONTROL_H__
+#ifndef __UEVENT_H__
+#define __UEVENT_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdio.h>
+#include <stdbool.h>
 
-#ifdef USE_RK_MODULE
-#define ISP_SEQ 1
-#define ISP_FMT HAL_FRMAE_FMT_NV12
-#define CIF_SEQ 0
-#define CIF_FMT HAL_FRMAE_FMT_SBGGR10
-#else
-#define ISP_SEQ 0
-#define ISP_FMT HAL_FRMAE_FMT_SBGGR8
-#define CIF_SEQ 1
-#define CIF_FMT HAL_FRMAE_FMT_NV12
-#endif
+struct _uevent {
+    char *strs[30];
+    int size;
+};
 
-void add_uvc_video();
-int check_uvc_video_id(void);
-void uvc_control_init(int width, int height);
-void uvc_control_exit();
-void uvc_read_camera_buffer(const void *cam_buffer, size_t cam_size);
-int get_uvc_streaming_intf(void);
-void uvc_control_signal(void);
-int uvc_control_run(void);
-void uvc_control_join(void);
-
-#ifdef __cplusplus
-}
-#endif
+int uevent_monitor_run(void);
 
 #endif
+
