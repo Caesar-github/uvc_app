@@ -76,7 +76,7 @@ static MPP_RET test_ctx_init(MpiEncTestData **data, MpiEncTestCmd *cmd)
 
     // update resource parameter
     if (p->fmt <= MPP_FMT_YUV420SP_VU)
-        p->frame_size = p->hor_stride * p->ver_stride * 3 / 2;
+        p->frame_size = MPP_ALIGN(cmd->width, 16) * MPP_ALIGN(cmd->height, 16) * 2;
     else if (p->fmt <= MPP_FMT_YUV422_UYVY) {
         // NOTE: yuyv and uyvy need to double stride
         p->hor_stride *= 2;
