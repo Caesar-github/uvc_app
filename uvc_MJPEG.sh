@@ -22,6 +22,7 @@ echo "UVC" > /sys/kernel/config/usb_gadget/rockchip/strings/0x409/product
 
 mkdir /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6
 #cat /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming_maxpacket
+echo 1 > /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming_bulk
 
 mkdir /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/control/header/h
 ln -s /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/control/header/h /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/control/class/fs/h
