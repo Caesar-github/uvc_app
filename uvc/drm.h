@@ -30,32 +30,19 @@
  * SOFTWARE.
  */
 
-#ifndef __UVC_ENCODE_H__
-#define __UVC_ENCODE_H__
-
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-#include <stdbool.h>
-#include "mpi_enc.h"
-
-struct uvc_encode {
-    int width;
-    int height;
-    int video_id;
-    MpiEncTestCmd mpi_cmd;
-    MpiEncTestData *mpi_data;
-    void* extra_data;
-    size_t extra_size;
-};
-
-int uvc_encode_init(struct uvc_encode *e, int width, int height);
-void uvc_encode_exit(struct uvc_encode *e);
-bool uvc_encode_process(struct uvc_encode *e, void *virt, int fd, size_t size);
+int drm_open(void);
+void drm_close(int fd);
+int drm_alloc(int fd, size_t len, size_t align, unsigned int *handle, unsigned int flags);
+int drm_free(int fd, unsigned int handle);
+void *drm_map_buffer(int fd, unsigned int handle, size_t len);
+void drm_unmap_buffer(void *buf, size_t len);
+int drm_handle_to_fd(int fd, unsigned int handle, int *map_fd, unsigned int flags);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

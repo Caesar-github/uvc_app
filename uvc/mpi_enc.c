@@ -261,11 +261,12 @@ RET:
     return ret;
 }
 
-static MPP_RET test_mpp_run(MpiEncTestData *p)
+static MPP_RET test_mpp_run(MpiEncTestData *p, int fd, size_t size)
 {
     MPP_RET ret;
     MppApi *mpi;
     MppCtx ctx;
+    MppBuffer buf = NULL;
 
     if (NULL == p)
         return MPP_ERR_NULL_PTR;
@@ -311,7 +312,21 @@ static MPP_RET test_mpp_run(MpiEncTestData *p)
         mpp_frame_set_hor_stride(frame, p->hor_stride);
         mpp_frame_set_ver_stride(frame, p->ver_stride);
         mpp_frame_set_fmt(frame, p->fmt);
+#if 0
         mpp_frame_set_buffer(frame, p->frm_buf);
+#else
+        MppBufferInfo inputCommit;
+        memset(&inputCommit, 0, sizeof(inputCommit));
+        inputCommit.type = MPP_BUFFER_TYPE_ION;
+        inputCommit.size = size;
+        inputCommit.fd = fd;
+        ret = mpp_buffer_import(&buf, &inputCommit);
+        if (ret) {
+            printf("import input picture buffer failed\n");
+            goto RET;
+        }
+        mpp_frame_set_buffer(frame, buf);
+#endif
         mpp_frame_set_eos(frame, p->frm_eos);
 
         ret = mpi->encode_put_frame(ctx, frame);
@@ -341,6 +356,8 @@ static MPP_RET test_mpp_run(MpiEncTestData *p)
     } while (0);
 RET:
 
+    if (buf)
+        mpp_buffer_put(buf);
     return ret;
 }
 
@@ -358,11 +375,13 @@ MPP_RET mpi_enc_test_init(MpiEncTestCmd *cmd, MpiEncTestData **data)
     }
     *data = p;
 
+#if 0
     ret = mpp_buffer_get(NULL, &p->frm_buf, p->frame_size);
     if (ret) {
         printf("failed to get buffer for input frame ret %d\n", ret);
         return ret;
     }
+#endif
 
     printf("mpi_enc_test encoder test start w %d h %d type %d\n",
             p->width, p->height, p->type);
@@ -387,12 +406,12 @@ MPP_RET mpi_enc_test_init(MpiEncTestCmd *cmd, MpiEncTestData **data)
     }
 }
 
-MPP_RET mpi_enc_test_run(MpiEncTestData **data)
+MPP_RET mpi_enc_test_run(MpiEncTestData **data, int fd, size_t size)
 {
     MPP_RET ret = MPP_OK;
     MpiEncTestData *p = *data;
 
-    ret = test_mpp_run(p);
+    ret = test_mpp_run(p, fd, size);
     if (ret)
         printf("test mpp run failed ret %d\n", ret);
     return ret;
@@ -416,10 +435,12 @@ MPP_RET mpi_enc_test_deinit(MpiEncTestData **data)
         p->ctx = NULL;
     }
 
+#if 0
     if (p->frm_buf) {
         mpp_buffer_put(p->frm_buf);
         p->frm_buf = NULL;
     }
+#endif
 
     if (MPP_OK == ret)
         printf("mpi_enc_test success total frame %d bps %lld\n",

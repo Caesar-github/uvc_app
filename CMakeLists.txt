@@ -11,6 +11,7 @@ set(LIB_SOURCE
     uvc/uvc_encode.cpp
     uvc/mpi_enc.c
     uvc/uevent.c
+    uvc/drm.c
 )
 add_library(rkuvc SHARED ${LIB_SOURCE})
 target_link_libraries(rkuvc pthread drm rockchip_mpp)

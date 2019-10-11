@@ -3,18 +3,15 @@
 #include "uvc_control.h"
 #include "uvc_video.h"
 #include "mpi_enc.h"
-
-typedef void (*callback_for_uvc)(const void *buffer, size_t size,
-                                 void* extra_data, size_t extra_size);
-callback_for_uvc cb_for_uvc = NULL;
-void register_callback_for_uvc(callback_for_uvc cb)
-{
-    cb_for_uvc = cb;
-}
+#include "drm.h"
 
 int main(int argc, char* argv[])
 {
+    int fd;
+    int ret;
+    unsigned int handle;
     char *buffer;
+    int handle_fd;
     size_t size;
     int i = 0;
     int width, height;
@@ -33,10 +30,22 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    fd = drm_open();
+    if (fd < 0)
+        return -1;
+
     size = width * height * 3 / 2;
-    buffer = (char*)malloc(size);
+    ret = drm_alloc(fd, size, 16, &handle, 0);
+    if (ret)
+        return -1;
+
+    ret = drm_handle_to_fd(fd, handle, &handle_fd, 0);
+    if (ret)
+        return -1;
+
+    buffer = (char*)drm_map_buffer(fd, handle, size);
     if (!buffer) {
-        printf("buffer alloc fail.\n");
+        printf("drm map buffer fail.\n");
         return -1;
     }
     y = width * height / 4;
@@ -50,14 +59,16 @@ int main(int argc, char* argv[])
     memset(buffer + y * 4 + uv * 2, 128, uv);
     memset(buffer + y * 4 + uv * 3, 192, uv);
 
-    register_callback_for_uvc(uvc_read_camera_buffer);
     uvc_control_run();
     while(1) {
         extra_cnt++;
-        if (cb_for_uvc)
-            cb_for_uvc(buffer, size, &extra_cnt, sizeof(extra_cnt));
+        uvc_read_camera_buffer(buffer, handle_fd, size, &extra_cnt, sizeof(extra_cnt));
         usleep(30000);
     }
     uvc_control_join();
+
+    drm_unmap_buffer(buffer, size);
+    drm_free(fd, handle);
+    drm_close(fd);
     return 0;
 }
