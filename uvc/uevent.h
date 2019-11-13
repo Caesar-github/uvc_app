@@ -35,13 +35,14 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 struct _uevent {
     char *strs[30];
     int size;
 };
 
-int uevent_monitor_run(void);
+int uevent_monitor_run(uint32_t flags);
 
 #endif
 

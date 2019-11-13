@@ -17,6 +17,8 @@ int main(int argc, char* argv[])
     int width, height;
     int y, uv;
     int extra_cnt = 0;
+    uint32_t flags = 0;
+
     if (argc != 3) {
         printf("Usage: uvc_app width height\n");
         printf("e.g. uvc_app 640 480\n");
@@ -59,13 +61,15 @@ int main(int argc, char* argv[])
     memset(buffer + y * 4 + uv * 2, 128, uv);
     memset(buffer + y * 4 + uv * 3, 192, uv);
 
-    uvc_control_run();
+    flags = UVC_CONTROL_LOOP_ONCE;
+    uvc_control_run(flags);
     while(1) {
         extra_cnt++;
         uvc_read_camera_buffer(buffer, handle_fd, size, &extra_cnt, sizeof(extra_cnt));
         usleep(30000);
     }
-    uvc_control_join();
+
+    uvc_control_join(flags);
 
     drm_unmap_buffer(buffer, size);
     drm_free(fd, handle);

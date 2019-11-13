@@ -61,6 +61,7 @@ static pthread_t run_id = 0;
 static bool run_flag = true;
 static pthread_mutex_t run_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t run_cond = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t video_added = PTHREAD_COND_INITIALIZER;
 
 static bool is_uvc_video(void *buf)
 {
@@ -185,11 +186,33 @@ void uvc_control_signal(void)
     pthread_mutex_unlock(&run_mutex);
 }
 
+void uvc_added_signal(void)
+{
+    pthread_mutex_lock(&run_mutex);
+    pthread_cond_signal(&video_added);
+    pthread_mutex_unlock(&run_mutex);
+}
+
+static void uvc_added_wait(void)
+{
+    pthread_mutex_lock(&run_mutex);
+    if (run_flag)
+        pthread_cond_wait(&video_added, &run_mutex);
+    pthread_mutex_unlock(&run_mutex);
+}
+
 static void *uvc_control_thread(void *arg)
 {
+    uint32_t flag = *(uint32_t *)arg;
+
     while (run_flag) {
         if (!check_uvc_video_id()) {
             add_uvc_video();
+            /* Ensure main was waiting for this signal */
+            usleep(500);
+            uvc_added_signal();
+            if (flag & UVC_CONTROL_LOOP_ONCE)
+                break;
             uvc_control_wait();
             uvc_video_id_exit_all();
         } else {
@@ -199,19 +222,34 @@ static void *uvc_control_thread(void *arg)
     pthread_exit(NULL);
 }
 
-int uvc_control_run(void)
+int uvc_control_run(uint32_t flags)
 {
-    uevent_monitor_run();
-    if (pthread_create(&run_id, NULL, uvc_control_thread, NULL)) {
-        printf("%s: pthread_create failed!\n", __func__);
-        return -1;
+    if (flags & UVC_CONTROL_CHECK_STRAIGHT) {
+        if (!check_uvc_video_id())
+            add_uvc_video();
+        else
+            return -1;
+    } else {
+        uevent_monitor_run(flags);
+        if (pthread_create(&run_id, NULL, uvc_control_thread, &flags)) {
+            printf("%s: pthread_create failed!\n", __func__);
+            return -1;
+        }
+        uvc_added_wait();
     }
+
     return 0;
 }
 
-void uvc_control_join(void)
+void uvc_control_join(uint32_t flags)
 {
-    run_flag = false;
-    uvc_control_signal();
-    pthread_join(run_id, NULL);
+    if (flags & UVC_CONTROL_CHECK_STRAIGHT) {
+        uvc_video_id_exit_all();
+    } else {
+        run_flag = false;
+        uvc_control_signal();
+        pthread_join(run_id, NULL);
+        if (flags & UVC_CONTROL_LOOP_ONCE);
+            uvc_video_id_exit_all();
+    }
 }

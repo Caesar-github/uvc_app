@@ -47,6 +47,8 @@
 #include "uevent.h"
 #include "uvc_control.h"
 
+static bool find_video;
+
 static void video_uevent(const struct _uevent *event)
 {
     const char dev_name[] = "DEVNAME=";
@@ -72,9 +74,11 @@ static void video_uevent(const struct _uevent *event)
         if (!strcmp(act, "add")) {
             printf("add video...\n");
             uvc_control_signal();
+            find_video = true;
             //video_record_addvideo(id, 1920, 1080, 30);
         } else {
             printf("delete video...\n");
+            find_video = false;
             //video_record_deletevideo(id);
         }
     }
@@ -110,6 +114,7 @@ static void *event_monitor_thread(void *arg)
     struct msghdr msg;
     struct sockaddr_nl sa;
     struct _uevent event;
+    uint32_t flags = *(uint32_t *)arg;
 
     prctl(PR_SET_NAME, "event_monitor", 0, 0, 0);
 
@@ -136,6 +141,7 @@ static void *event_monitor_thread(void *arg)
         goto err_event_monitor;
     }
 
+    find_video = false;
     while (1) {
         event.size = 0;
         len = recvmsg(sockfd, &msg, 0);
@@ -152,6 +158,8 @@ static void *event_monitor_thread(void *arg)
             }
         }
         parse_event(&event);
+        if ((flags & UVC_CONTROL_LOOP_ONCE) && find_video)
+            break;
     }
 
 err_event_monitor:
@@ -159,10 +167,10 @@ err_event_monitor:
     pthread_exit(NULL);
 }
 
-int uevent_monitor_run(void)
+int uevent_monitor_run(uint32_t flags)
 {
     pthread_t tid;
 
-    return pthread_create(&tid, NULL, event_monitor_thread, NULL);
+    return pthread_create(&tid, NULL, event_monitor_thread, &flags);
 }
 

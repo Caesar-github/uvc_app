@@ -37,6 +37,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 #ifdef USE_RK_MODULE
 #define ISP_SEQ 1
 #define ISP_FMT HAL_FRMAE_FMT_NV12
@@ -49,6 +51,9 @@ extern "C" {
 #define CIF_FMT HAL_FRMAE_FMT_NV12
 #endif
 
+#define UVC_CONTROL_LOOP_ONCE		(1 << 0)
+#define UVC_CONTROL_CHECK_STRAIGHT	(1 << 1)
+
 void add_uvc_video();
 int check_uvc_video_id(void);
 void uvc_control_init(int width, int height);
@@ -57,8 +62,8 @@ void uvc_read_camera_buffer(void *cam_buf, int cam_fd, size_t cam_size,
                             void* extra_data, size_t extra_size);
 int get_uvc_streaming_intf(void);
 void uvc_control_signal(void);
-int uvc_control_run(void);
-void uvc_control_join(void);
+int uvc_control_run(uint32_t flags);
+void uvc_control_join(uint32_t flags);
 
 #ifdef __cplusplus
 }
