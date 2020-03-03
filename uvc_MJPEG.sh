@@ -118,7 +118,13 @@ ln -s /sys/kernel/config/usb_gadget/rockchip/configs/b.1 /sys/kernel/config/usb_
 
 echo 0x0005 > /sys/kernel/config/usb_gadget/rockchip/idProduct
 echo "uvc" > /sys/kernel/config/usb_gadget/rockchip/configs/b.1/strings/0x409/configuration
-rm -f /sys/kernel/config/usb_gadget/rockchip/configs/b.1/ffs.adb
+USB_CONFIGS_DIR=/sys/kernel/config/usb_gadget/rockchip/configs/b.1
+if [ -e ${USB_CONFIGS_DIR}/ffs.adb ]; then
+   #for rk1808 kernel 4.4
+   rm -f ${USB_CONFIGS_DIR}/ffs.adb
+else
+   ls ${USB_CONFIGS_DIR} | grep f[0-9] | xargs -I {} rm ${USB_CONFIGS_DIR}/{}
+fi
 ln -s /sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6 /sys/kernel/config/usb_gadget/rockchip/configs/b.1/f1
 
 UDC=`ls /sys/class/udc/| awk '{print $1}'`
