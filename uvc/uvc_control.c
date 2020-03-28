@@ -102,7 +102,7 @@ int check_uvc_video_id(void)
     memset(&uvc_ctrl, 0, sizeof(uvc_ctrl));
     uvc_ctrl[0].id = -1;
     uvc_ctrl[1].id = -1;
-    for (i = 0; i < 20; i++) {
+    for (i = 0; i < 30; i++) {
         snprintf(cmd, sizeof(cmd), "/sys/class/video4linux/video%d/name", i);
         if (access(cmd, F_OK))
             continue;
