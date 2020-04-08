@@ -43,7 +43,7 @@
 
 #define SYS_ISP_NAME "isp"
 #define SYS_CIF_NAME "cif"
-#define UVC_STREAMING_INTF_PATH "/sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming_intf"
+#define UVC_STREAMING_INTF_PATH "/sys/kernel/config/usb_gadget/rockchip/functions/uvc.gs6/streaming/bInterfaceNumber"
 
 struct uvc_ctrl {
     int id;
