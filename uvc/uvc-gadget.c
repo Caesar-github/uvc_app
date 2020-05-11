@@ -151,31 +151,31 @@ struct uvc_format_info {
 };
 
 static const struct uvc_frame_info uvc_frames_yuyv[] = {
-    {  640, 480, { 666666, 1000000, 2000000, 0 }, },
-    { 1280, 720, { 1000000, 2000000, 0 }, },
+    {  640, 480, { 333333, 666666, 1000000, 2000000, 0 }, },
+    { 1280, 720, { 333333, 1000000, 2000000, 0 }, },
     { 0, 0, { 0, }, },
 };
 
 static const struct uvc_frame_info uvc_frames_mjpeg[] = {
-    {  640, 480, { 666666, 1000000, 2000000, 0 }, },
-    { 1280, 720, { 666666, 1000000, 2000000, 0 }, },
-    { 1920, 1080, { 666666, 1000000, 2000000, 0 }, },
-    { 2560, 1440, { 666666, 1000000, 2000000, 0 }, },
-    { 2592, 1944, { 666666, 1000000, 2000000, 0 }, },
+    {  640, 480, { 333333, 666666, 1000000, 2000000, 0 }, },
+    { 1280, 720, { 333333, 666666, 1000000, 2000000, 0 }, },
+    { 1920, 1080, { 333333, 666666, 1000000, 2000000, 0 }, },
+    { 2560, 1440, { 333333, 666666, 1000000, 2000000, 0 }, },
+    { 2592, 1944, { 333333, 666666, 1000000, 2000000, 0 }, },
     { 0, 0, { 0, }, },
 };
 
 static const struct uvc_frame_info uvc_frames_h264[] = {
-//    {  640, 360, { 333333, 400000, 500000, 666666, 1000000, 2000000, 0 }, },
-//    { 1280, 720, { 333333, 400000, 500000, 666666, 1000000, 2000000, 0 }, },
+    {  640, 480, { 333333, 400000, 500000, 666666, 1000000, 2000000, 0 }, },
+    { 1280, 720, { 333333, 400000, 500000, 666666, 1000000, 2000000, 0 }, },
     { 1920, 1080, { 333333, 400000, 500000, 666666, 1000000, 2000000, 0 }, },
     { 0, 0, { 0, }, },
 };
 
 static const struct uvc_format_info uvc_formats[] = {
-//    { V4L2_PIX_FMT_YUYV, uvc_frames_yuyv },
+    { V4L2_PIX_FMT_YUYV, uvc_frames_yuyv },
     { V4L2_PIX_FMT_MJPEG, uvc_frames_mjpeg },
-//    { V4L2_PIX_FMT_H264, uvc_frames_h264 },
+    { V4L2_PIX_FMT_H264, uvc_frames_h264 },
 };
 
 /* ---------------------------------------------------------------------------
@@ -754,9 +754,9 @@ uvc_video_set_format(struct uvc_device *dev)
     fmt.fmt.pix.pixelformat = dev->fcc;
     fmt.fmt.pix.field = V4L2_FIELD_NONE;
     if (dev->fcc == V4L2_PIX_FMT_MJPEG)
-        fmt.fmt.pix.sizeimage = dev->imgsize * 1.5;
+        fmt.fmt.pix.sizeimage = dev->imgsize * 2/*1.5*/;
     if (dev->fcc == V4L2_PIX_FMT_H264)
-        fmt.fmt.pix.sizeimage = dev->width * dev->height * 3 / 2;
+        fmt.fmt.pix.sizeimage = dev->width * dev->height * 2;
 
     ret = ioctl(dev->uvc_fd, VIDIOC_S_FMT, &fmt);
     if (ret < 0) {
@@ -1391,7 +1391,7 @@ uvc_handle_streamon_event(struct uvc_device *dev)
         dev->is_streaming = 1;
     }
 
-    uvc_control_init(dev->width, dev->height);
+    uvc_control_init(dev->width, dev->height, dev->fcc);
     return 0;
 
 err:
@@ -1439,6 +1439,9 @@ uvc_fill_streaming_control(struct uvc_device *dev,
         break;
     case V4L2_PIX_FMT_MJPEG:
     case V4L2_PIX_FMT_H264:
+        dev->width = frame->width;
+        dev->height = frame->height;
+        dev->imgsize = frame->width * frame->height * 2/*1.5*/;
         ctrl->dwMaxVideoFrameSize = dev->imgsize;
         break;
     }
@@ -2808,6 +2811,11 @@ uvc_events_process_data(struct uvc_device *dev, struct uvc_request_data *data)
     case V4L2_PIX_FMT_H264:
         if (dev->imgsize == 0)
             printf("WARNING: MJPEG/h.264 requested and no image loaded.\n");
+        dev->width = frame->width;
+        dev->height = frame->height;
+        dev->imgsize = frame->width * frame->height * 2/*1.5*/;
+        printf("uvc_events_process_data:format->fcc:%d,dev->width:%d,dev->imgsize:%d\n",
+                format->fcc,dev->width,dev->imgsize);
         target->dwMaxVideoFrameSize = dev->imgsize;
         break;
     }
@@ -2839,7 +2847,7 @@ uvc_events_process_data(struct uvc_device *dev, struct uvc_request_data *data)
             break;
         case V4L2_PIX_FMT_MJPEG:
         case V4L2_PIX_FMT_H264:
-            fmt.fmt.pix.sizeimage = dev->imgsize;
+            fmt.fmt.pix.sizeimage = (fmt.fmt.pix.width * fmt.fmt.pix.height * 2/*1.5*/);//dev->imgsize;
             break;
         }
 
@@ -3236,7 +3244,7 @@ uvc_gadget_main(int id)
     udev->height = (default_resolution == 0) ? 360 : 720;
     udev->imgsize = (default_format == 0) ?
                     (udev->width * udev->height * 2) :
-                    (udev->width * udev->height * 1.5);
+                    (udev->width * udev->height * 2/*1.5*/);
     switch (default_format) {
     case 1:
         udev->fcc = V4L2_PIX_FMT_MJPEG;

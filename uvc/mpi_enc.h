@@ -104,8 +104,11 @@ typedef struct {
 MPP_RET mpi_enc_test_init(MpiEncTestCmd *cmd, MpiEncTestData **data);
 MPP_RET mpi_enc_test_run(MpiEncTestData **data, int fd, size_t size);
 MPP_RET mpi_enc_test_deinit(MpiEncTestData **data);
+void mpi_enc_cmd_config(MpiEncTestCmd *cmd, int width, int height,int fcc);
 void mpi_enc_cmd_config_mjpg(MpiEncTestCmd *cmd, int width, int height);
+void mpi_enc_cmd_config_h264(MpiEncTestCmd *cmd, int width, int height);
 void mpi_enc_set_format(MppFrameFormat format);
+int mpi_enc_get_h264_extra(MpiEncTestData *p, void *buffer, size_t *size);
 
 #ifdef __cplusplus
 }

@@ -136,11 +136,11 @@ void add_uvc_video()
         uvc_video_id_add(uvc_ctrl[1].id);
 }
 
-void uvc_control_init(int width, int height)
+void uvc_control_init(int width, int height, int fcc)
 {
     pthread_mutex_lock(&lock);
     memset(&uvc_enc, 0, sizeof(uvc_enc));
-    if (uvc_encode_init(&uvc_enc, width, height)) {
+    if (uvc_encode_init(&uvc_enc, width, height, fcc)) {
         printf("%s fail!\n", __func__);
         abort();
     }

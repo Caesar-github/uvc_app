@@ -56,7 +56,7 @@ extern "C" {
 
 void add_uvc_video();
 int check_uvc_video_id(void);
-void uvc_control_init(int width, int height);
+void uvc_control_init(int width, int height, int fcc);
 void uvc_control_exit();
 void uvc_read_camera_buffer(void *cam_buf, int cam_fd, size_t cam_size,
                             void* extra_data, size_t extra_size);

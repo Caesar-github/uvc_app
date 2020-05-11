@@ -15,6 +15,7 @@
  */
 
 #include "mpi_enc.h"
+#include <linux/videodev2.h>
 
 #if 0
 static OptionInfo mpi_enc_cmd[] = {
@@ -442,10 +443,7 @@ MPP_RET mpi_enc_test_deinit(MpiEncTestData **data)
     }
 #endif
 
-    if (MPP_OK == ret)
-        printf("mpi_enc_test success total frame %d bps %lld\n",
-                p->frame_count, (RK_U64)((p->stream_size * 8 * p->fps) / p->frame_count));
-    else
+    if (MPP_OK != ret)
         printf("mpi_enc_test failed ret %d\n", ret);
 
     test_ctx_deinit(&p);
@@ -596,6 +594,28 @@ static void mpi_enc_test_show_options(MpiEncTestCmd* cmd)
     printf("type       : %d\n", cmd->type);
     printf("debug flag : %x\n", cmd->debug);
 }
+void mpi_enc_cmd_config(MpiEncTestCmd *cmd, int width, int height,int fcc)
+{
+    memset((void*)cmd, 0, sizeof(*cmd));
+    cmd->width = width;
+    cmd->height = height;
+    cmd->format = g_format;
+    switch (fcc) {
+    case V4L2_PIX_FMT_YUYV:
+        printf("%s: yuyv not need mpp encodec: %d\n", __func__, fcc);
+        break;
+    case V4L2_PIX_FMT_MJPEG:
+        cmd->type = MPP_VIDEO_CodingMJPEG;
+        break;
+    case V4L2_PIX_FMT_H264:
+        cmd->type = MPP_VIDEO_CodingAVC;
+        break;
+    default:
+        printf("%s: not support fcc: %d\n", __func__, fcc);
+        break;
+    }
+
+}
 
 void mpi_enc_cmd_config_mjpg(MpiEncTestCmd *cmd, int width, int height)
 {
@@ -606,7 +626,48 @@ void mpi_enc_cmd_config_mjpg(MpiEncTestCmd *cmd, int width, int height)
     cmd->type = MPP_VIDEO_CodingMJPEG;
 }
 
+void mpi_enc_cmd_config_h264(MpiEncTestCmd *cmd, int width, int height)
+{
+    memset((void*)cmd, 0, sizeof(*cmd));
+    cmd->width = width;
+    cmd->height = height;
+    cmd->format = g_format;
+    cmd->type = MPP_VIDEO_CodingAVC;
+}
 void mpi_enc_set_format(MppFrameFormat format)
 {
     g_format = format;
+}
+int mpi_enc_get_h264_extra(MpiEncTestData *p, void *buffer, size_t *size)
+{
+    MPP_RET ret;
+    MppApi *mpi;
+    MppCtx ctx;
+    if (NULL == p) {
+        *size = 0;
+        return -1;
+    }
+    mpi = p->mpi;
+    ctx = p->ctx;
+    MppPacket packet = NULL;
+    ret = mpi->control(ctx, MPP_ENC_GET_EXTRA_INFO, &packet);
+    if (ret) {
+        printf("mpi control enc get extra info failed\n");
+        *size = 0;
+        return -1;
+    }
+    if (packet) {
+        void *ptr   = mpp_packet_get_pos(packet);
+        size_t len  = mpp_packet_get_length(packet);
+        printf("%s: len = %d\n", __func__, len);
+        if (*size >= len) {
+            memcpy(buffer, ptr, len);
+            *size = len;
+        } else {
+            printf("%s: input buffer size = %d\n", __func__, *size);
+            *size = 0;
+        }
+        packet = NULL;
+    }
+    return 0;
 }

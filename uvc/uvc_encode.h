@@ -43,14 +43,17 @@ extern "C" {
 struct uvc_encode {
     int width;
     int height;
+    int fcc;
     int video_id;
     MpiEncTestCmd mpi_cmd;
     MpiEncTestData *mpi_data;
     void* extra_data;
     size_t extra_size;
+    void *h264_extra_data;
+    size_t h264_extra_size;
 };
 
-int uvc_encode_init(struct uvc_encode *e, int width, int height);
+int uvc_encode_init(struct uvc_encode *e, int width, int height,int fcc);
 void uvc_encode_exit(struct uvc_encode *e);
 bool uvc_encode_process(struct uvc_encode *e, void *virt, int fd, size_t size);
 
