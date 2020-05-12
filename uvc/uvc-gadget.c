@@ -3072,7 +3072,7 @@ uvc_gadget_main(int id)
     char *mjpeg_image = NULL;
     fd_set fdsv, fdsu;
     int ret, nfds;
-    int bulk_mode = 1;
+    int bulk_mode = 0;
     int dummy_data_gen_mode = 1;
     /* Frame format/resolution related params. */
     int default_format = 1;
