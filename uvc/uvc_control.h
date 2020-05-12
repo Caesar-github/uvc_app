@@ -38,6 +38,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef USE_RK_MODULE
 #define ISP_SEQ 1
