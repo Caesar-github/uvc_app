@@ -40,8 +40,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <pthread.h>
+#include <stdbool.h>
 
 #define MAX_VIDEO_ID 20
+
+struct camera_param {
+    int width;
+    int height;
+};
+
+static struct camera_param g_param;
+static pthread_t g_th;
+static bool g_run;
 
 int get_video_id(char *name)
 {
@@ -75,9 +86,12 @@ int isp_uvc(int width, int height)
     const struct rkisp_api_ctx *ctx;
     const struct rkisp_api_buf *buf;
     char name[32];
-
-    uint32_t flags = 0;
     int extra_cnt = 0;
+
+    if (!g_run)
+        return -1;
+
+    printf("%s enter\n", __func__);
 
     int id = get_video_id("rkisp1_mainpath");
     if (id < 0) {
@@ -98,9 +112,6 @@ int isp_uvc(int width, int height)
     if (rkisp_start_capture(ctx))
         return -1;
 
-    flags = UVC_CONTROL_LOOP_ONCE;
-    uvc_control_run(flags);
-
     do {
         buf = rkisp_get_frame(ctx, 0);
         if (!buf) {
@@ -111,14 +122,36 @@ int isp_uvc(int width, int height)
         uvc_read_camera_buffer(buf->buf, buf->fd, buf->size,
                                &extra_cnt, sizeof(extra_cnt));
         rkisp_put_frame(ctx, buf);
-    } while (1);
-
-    uvc_control_join(flags);
+    } while (g_run);
 
     rkisp_stop_capture(ctx);
     rkisp_close_device(ctx);
 
+    printf("%s exit\n", __func__);
+
     return 0;
+}
+
+void *isp_uvc_thread(void *arg)
+{
+    struct camera_param *param = (struct camera_param *)arg;
+    while (!isp_uvc(param->width, param->height))
+        usleep(100000);
+    pthread_exit(NULL);
+}
+
+int open_isp_uvc(int width, int height)
+{
+    g_run = true;
+    g_param.width = width;
+    g_param.height = height;
+    return pthread_create(&g_th, NULL, isp_uvc_thread, &g_param);
+}
+
+void close_isp_uvc(void)
+{
+    g_run = false;
+    pthread_join(g_th, NULL);
 }
 
 int cif_uvc(int width, int height)
@@ -126,9 +159,10 @@ int cif_uvc(int width, int height)
     const struct rkisp_api_ctx *ctx;
     const struct rkisp_api_buf *buf;
     char name[32];
-
-    uint32_t flags = 0;
     int extra_cnt = 0;
+
+    if (!g_run)
+        return -1;
 
     int id = get_video_id("stream_cif_dvp");
     if (id < 0) {
@@ -150,9 +184,6 @@ int cif_uvc(int width, int height)
     if (rkisp_start_capture(ctx))
         return -1;
 
-    flags = UVC_CONTROL_LOOP_ONCE;
-    uvc_control_run(flags);
-
     do {
         buf = rkisp_get_frame(ctx, 0);
         if (!buf) {
@@ -163,9 +194,7 @@ int cif_uvc(int width, int height)
         uvc_read_camera_buffer(buf->buf, buf->fd, buf->size,
                                &extra_cnt, sizeof(extra_cnt));
         rkisp_put_frame(ctx, buf);
-    } while (1);
-
-    uvc_control_join(flags);
+    } while (g_run);
 
     rkisp_stop_capture(ctx);
     rkisp_close_device(ctx);
@@ -173,30 +202,49 @@ int cif_uvc(int width, int height)
     return 0;
 }
 
+void *cif_uvc_thread(void *arg)
+{
+    struct camera_param *param = (struct camera_param *)arg;
+    while (!cif_uvc(param->width, param->height))
+        usleep(100000);
+    pthread_exit(NULL);
+}
+
+int open_cif_uvc(int width, int height)
+{
+    g_run = true;
+    g_param.width = width;
+    g_param.height = height;
+    return pthread_create(&g_th, NULL, cif_uvc_thread, &g_param);
+}
+
+void close_cif_uvc(void)
+{
+    g_run = false;
+    pthread_join(g_th, NULL);
+}
+
 void usage(const char *name)
 {
     printf("Usage: %s options\n"
-           "-w --width Set camera width\n"
-           "-h --height Set camera height\n"
            "-i --isp   Use isp camera.\n"
            "-c --cif   Use cif camera.\n"
            , name);
-    printf("e.g. %s -w 640 -h 480 -i\n", name);
-    printf("e.g. %s -w 1280 -h 720 -c\n", name);
+    printf("e.g. %s -i\n", name);
+    printf("e.g. %s -c\n", name);
     exit(0);
 }
 
 int main(int argc, char* argv[])
 {
-    int g_width = 0, g_height = 0;
+    uint32_t flags = 0;
+
     bool g_isp_en = false;
     bool g_cif_en = false;
 
     int next_option;
-    const char* const short_options = "w:h:ic";
+    const char* const short_options = "ic";
     const struct option long_options[] = {
-        {"width", 1, NULL, 'w'},
-        {"height", 1, NULL, 'h'},
         {"isp", 0, NULL, 'i'},
         {"cif", 0, NULL, 'c'},
     };
@@ -204,12 +252,6 @@ int main(int argc, char* argv[])
     do {
         next_option = getopt_long(argc, argv, short_options, long_options, NULL);
         switch (next_option) {
-        case 'w':
-            g_width = atoi(optarg);
-            break;
-        case 'h':
-            g_height = atoi(optarg);
-            break;
         case 'i':
             g_isp_en = true;
             break;
@@ -227,21 +269,21 @@ int main(int argc, char* argv[])
     if (!g_isp_en && !g_cif_en)
         usage(argv[0]);
 
-    if (!g_width || !g_height)
-        usage(argv[0]);
-
     if (g_isp_en) {
-        while (!isp_uvc(g_width, g_height)) {
-            usleep(100000);
-            continue;
-
-        }
+        register_uvc_open_camera(open_isp_uvc);
+        register_uvc_close_camera(close_isp_uvc);
     } else if (g_cif_en) {
-        while (!cif_uvc(g_width, g_height)) {
-            usleep(100000);
-            continue;
-        }
+        register_uvc_open_camera(open_cif_uvc);
+        register_uvc_close_camera(close_cif_uvc);
     }
+
+    flags = UVC_CONTROL_LOOP_ONCE;
+    uvc_control_run(flags);
+
+    while (1)
+        sleep(5);
+
+    uvc_control_join(flags);
 
     return 0;
 }

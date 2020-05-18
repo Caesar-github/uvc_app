@@ -63,6 +63,19 @@ static pthread_mutex_t run_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t run_cond = PTHREAD_COND_INITIALIZER;
 static pthread_cond_t video_added = PTHREAD_COND_INITIALIZER;
 
+static uvc_open_camera_callback uvc_open_camera_cb = NULL;
+static uvc_close_camera_callback uvc_close_camera_cb = NULL;
+
+void register_uvc_open_camera(uvc_open_camera_callback cb)
+{
+    uvc_open_camera_cb = cb;
+}
+
+void register_uvc_close_camera(uvc_close_camera_callback cb)
+{
+    uvc_close_camera_cb = cb;
+}
+
 static bool is_uvc_video(void *buf)
 {
     if (strstr(buf, "usb") || strstr(buf, "gadget"))
@@ -145,10 +158,14 @@ void uvc_control_init(int width, int height, int fcc)
         abort();
     }
     pthread_mutex_unlock(&lock);
+    if (uvc_open_camera_cb)
+        uvc_open_camera_cb(width, height);
 }
 
 void uvc_control_exit()
 {
+    if (uvc_close_camera_cb)
+        uvc_close_camera_cb();
     pthread_mutex_lock(&lock);
     uvc_encode_exit(&uvc_enc);
     memset(&uvc_enc, 0, sizeof(uvc_enc));
