@@ -63,7 +63,6 @@ struct uvc_video {
     pthread_mutex_t buffer_mutex;
     pthread_mutex_t user_mutex;
     struct uvc_user uvc_user;
-    int idle_cnt;
     struct uvc_buffer* buffer_s;
 };
 

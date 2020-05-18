@@ -804,14 +804,10 @@ static void _uvc_user_fill_buffer(struct uvc_video *v, struct uvc_device *dev, s
 {
     struct uvc_buffer* buffer = NULL;
 
-    v->idle_cnt = 0;
     while (!(buffer = uvc_buffer_front(&v->uvc->read)) && _uvc_get_user_run_state(v)) {
         pthread_mutex_unlock(&mtx_v);
         usleep(1000);
-        v->idle_cnt++;
         pthread_mutex_lock(&mtx_v);
-        if (v->idle_cnt > 100)
-            break;
     }
     if (buffer) {
         if (!_uvc_buffer_check(v, buffer))
