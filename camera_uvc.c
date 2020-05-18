@@ -87,7 +87,7 @@ int isp_uvc(int width, int height)
 
     snprintf(name, sizeof(name), "/dev/video%d", id);
     printf("%s: %s\n", __func__, name);
-    ctx = rkisp_open_device(name, 1);
+    ctx = rkisp_open_device(name, 0);
     if (ctx == NULL) {
         printf("%s: ctx is NULL\n", __func__);
         return -1;
@@ -103,6 +103,10 @@ int isp_uvc(int width, int height)
 
     do {
         buf = rkisp_get_frame(ctx, 0);
+        if (!buf) {
+            printf("%s: rkisp_get_frame NULL\n", __func__);
+            break;
+        }
         extra_cnt++;
         uvc_read_camera_buffer(buf->buf, buf->fd, buf->size,
                                &extra_cnt, sizeof(extra_cnt));
@@ -151,6 +155,10 @@ int cif_uvc(int width, int height)
 
     do {
         buf = rkisp_get_frame(ctx, 0);
+        if (!buf) {
+            printf("%s: rkisp_get_frame NULL\n", __func__);
+            break;
+        }
         extra_cnt++;
         uvc_read_camera_buffer(buf->buf, buf->fd, buf->size,
                                &extra_cnt, sizeof(extra_cnt));
@@ -222,10 +230,18 @@ int main(int argc, char* argv[])
     if (!g_width || !g_height)
         usage(argv[0]);
 
-    if (g_isp_en)
-        isp_uvc(g_width, g_height);
-    else if (g_cif_en)
-        cif_uvc(g_width, g_height);
+    if (g_isp_en) {
+        while (!isp_uvc(g_width, g_height)) {
+            usleep(100000);
+            continue;
+
+        }
+    } else if (g_cif_en) {
+        while (!cif_uvc(g_width, g_height)) {
+            usleep(100000);
+            continue;
+        }
+    }
 
     return 0;
 }
