@@ -1,23 +1,26 @@
 cmake_minimum_required(VERSION 2.8.0 FATAL_ERROR)
 PROJECT(uvc_app)
 
+add_definitions(-DSN_CODE="${SN_CODE}")
+add_definitions(-DUSB_UVC_FW_VERSION="${USB_FW_VERSION}")
+
 include_directories(uvc)
 
 set(LIB_SOURCE
-    uvc/uvc-gadget.c
+    uvc/uvc_configfs.c
+    uvc/uvc_gadget.c
     uvc/uvc_video.cpp
-    uvc/yuv.c
-    uvc/uvc_control.c
     uvc/uvc_encode.cpp
-    uvc/mpi_enc.c
-    uvc/uevent.c
+    uvc/yuv.c
+    uvc/vpu.c
     uvc/drm.c
 )
 add_library(rkuvc SHARED ${LIB_SOURCE})
+
 target_link_libraries(rkuvc pthread drm rockchip_mpp)
 
 set(SOURCE
-    main.c
+    main.cpp
     ${LIB_SOURCE}
 )
 

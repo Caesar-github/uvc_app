@@ -1,33 +1,9 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * Copyright (C) 2019 Rockchip Electronics Co., Ltd.
+ * drm buffer handle
  *
- * This software is available to you under a choice of one of two
- * licenses.  You may choose to be licensed under the terms of the GNU
- * General Public License (GPL), available from the file
- * COPYING in the main directory of this source tree, or the
- * OpenIB.org BSD license below:
+ * Copyright (C) 2020 Rockchip Electronics Co., Ltd.
  *
- *     Redistribution and use in source and binary forms, with or
- *     without modification, are permitted provided that the following
- *     conditions are met:
- *
- *      - Redistributions of source code must retain the above
- *        copyright notice, this list of conditions and the following
- *        disclaimer.
- *
- *      - Redistributions in binary form must reproduce the above
- *        copyright notice, this list of conditions and the following
- *        disclaimer in the documentation and/or other materials
- *        provided with the distribution.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
  */
 
 #include <errno.h>
@@ -44,7 +20,7 @@
 
 #define DRM_DEVICE "/dev/dri/card0"
 
-int drm_open(void)
+static int drm_open(void)
 {
     int fd;
     fd = open(DRM_DEVICE, O_RDWR);
@@ -55,7 +31,7 @@ int drm_open(void)
     return fd;
 }
 
-void drm_close(int fd)
+static void drm_close(int fd)
 {
     if (fd >= 0)
         close(fd);
@@ -72,7 +48,7 @@ static int drm_ioctl(int fd, int req, void *arg)
     return ret;
 }
 
-int drm_alloc(int fd, size_t len, size_t align, unsigned int *handle, unsigned int flags)
+static int drm_alloc(int fd, size_t len, size_t align, unsigned int *handle, unsigned int flags)
 {
     int ret;
     struct drm_mode_create_dumb dmcb;
@@ -95,7 +71,7 @@ int drm_alloc(int fd, size_t len, size_t align, unsigned int *handle, unsigned i
     return ret;
 }
 
-int drm_free(int fd, unsigned int handle)
+static int drm_free(int fd, unsigned int handle)
 {
     struct drm_mode_destroy_dumb data = {
         .handle = handle,
@@ -103,7 +79,7 @@ int drm_free(int fd, unsigned int handle)
     return drm_ioctl(fd, DRM_IOCTL_MODE_DESTROY_DUMB, &data);
 }
 
-void *drm_map_buffer(int fd, unsigned int handle, size_t len)
+static void *drm_map_buffer(int fd, unsigned int handle, size_t len)
 {
     struct drm_mode_map_dumb dmmd;
     void *buf = NULL;
@@ -127,13 +103,13 @@ void *drm_map_buffer(int fd, unsigned int handle, size_t len)
     return buf;
 }
 
-void drm_unmap_buffer(void *buf, size_t len)
+static void drm_unmap_buffer(void *buf, size_t len)
 {
     if (buf)
         munmap(buf, len);
 }
 
-int drm_handle_to_fd(int fd, unsigned int handle, int *map_fd, unsigned int flags)
+static int drm_handle_to_fd(int fd, unsigned int handle, int *map_fd, unsigned int flags)
 {
     int ret;
     struct drm_prime_handle dph;
@@ -158,4 +134,45 @@ int drm_handle_to_fd(int fd, unsigned int handle, int *map_fd, unsigned int flag
     }
 
     return ret;
+}
+
+int video_drm_alloc(struct video_drm *bo, int width, int height,
+                    int num, int den)
+{
+    int ret;
+
+    if (width == 0 || height == 0) {
+      printf("uvc width height error %d x %d\n", width, height);
+      return -1;
+    }
+
+    bo->fd = drm_open();
+    if (bo->fd < 0)
+        return -1;
+
+    bo->size = width * height * num / den;
+    ret = drm_alloc(bo->fd, bo->size, 16, &bo->handle, 0);
+    if (ret)
+        return -1;
+
+    ret = drm_handle_to_fd(bo->fd, bo->handle, &bo->handle_fd, 0);
+    if (ret)
+        return -1;
+
+    bo->buffer = (char*)drm_map_buffer(bo->fd, bo->handle, bo->size);
+    if (!bo->buffer) {
+        printf("drm map buffer fail.\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+int video_drm_free(struct video_drm *bo)
+{
+    drm_unmap_buffer(bo->buffer, bo->size);
+    drm_free(bo->fd, bo->handle);
+    drm_close(bo->fd);
+
+    return 0;
 }

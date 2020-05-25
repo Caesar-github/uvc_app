@@ -30,38 +30,40 @@
  * SOFTWARE.
  */
 
-#ifndef __UVC_ENCODE_H__
-#define __UVC_ENCODE_H__
+#ifndef __VPU_ENCODE_H__
+#define __VPU_ENCODE_H__
 
-extern "C" {
-#include "vpu.h"
-}
-#include "uvc_video.h"
-#include "video_common.h"
+#include <memory.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <assert.h>
 
-#define UVC_STAMP 65536
-#define ENABLE_UVC_H264 0
+#include <rockchip/rk_mpi.h>
+#include "drm.h"
 
-struct uvc_encode {
-    struct vpu_encode encode;
-    struct video_drm encode_dst_buff;
-    int rga_fd;
-    struct video_drm uvc_out;
-    struct video_drm uvc_mid;
-    struct video_drm uvc_pre;
-    void* out_virt;
-    int out_fd;
-    int video_id;
-    void *user_data;
-    size_t user_size;
-    size_t frame_size_off;
+struct vpu_encode {
+  MppCtx mpp_ctx;
+  MppApi* mpi;
+  int width;
+  int height;
+  struct video_drm jpeg_enc_out;
+  RK_U8* enc_out_data;
+  RK_U32 enc_out_length;
+  MppPacket packet;
 };
 
-int uvc_encode_init(struct uvc_encode *e);
-void uvc_encode_exit(struct uvc_encode *e);
-int uvc_pre_process(struct uvc_encode* e, int in_width, int in_height,
-                    void* in_virt, int in_fd, int in_fmt);
-bool uvc_encode_process(struct uvc_encode *e);
-bool uvc_write_process(struct uvc_encode *e);
+int vpu_nv12_encode_jpeg_init_ext(struct vpu_encode* encode,
+                              int width,
+                              int height,
+                              int quant);
+
+int vpu_nv12_encode_jpeg_init(struct vpu_encode* encode, int width, int height);
+
+int vpu_nv12_encode_jpeg_doing(struct vpu_encode* encode,
+                               void* srcbuf,
+                               int src_fd,
+                               size_t src_size);
+
+void vpu_nv12_encode_jpeg_done(struct vpu_encode* encode);
 
 #endif

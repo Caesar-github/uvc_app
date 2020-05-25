@@ -41,18 +41,17 @@ extern "C" {
 #include <stdbool.h>
 #include <stddef.h>
 #include <unistd.h>
-#include <linux/videodev2.h>
-
-#define UVC_BUFFER_NUM 3
-#define YUYV_AS_RAW 0
-
-struct uvc_device;
+#include "uvc_gadget.h"
+#include "uvc_configfs.h"
 
 struct uvc_user {
     unsigned int width;
     unsigned int height;
     bool run;
     unsigned int fcc;
+    int mirror;
+    int image_effect;
+    bool dcrop;
 };
 
 struct uvc_video {
@@ -63,15 +62,20 @@ struct uvc_video {
     pthread_mutex_t buffer_mutex;
     pthread_mutex_t user_mutex;
     struct uvc_user uvc_user;
-    int idle_cnt;
-    struct uvc_buffer* buffer_s;
+    pthread_mutex_t cond_mutex;
+    pthread_cond_t cond;
+    int seq;
+    bool is_isp;
+    bool stream_start;
+    int stream_timeout;
 };
 
-int uvc_gadget_pthread_create(int *id);
 
 int uvc_video_id_check(int id);
-int uvc_video_id_add(int id);
+int uvc_video_id_add(struct uvc_function_config *fc);
+void uvc_video_id_cond_signal(int id);
 void uvc_video_id_remove(int id);
+int uvc_video_id_exit(int id);
 void uvc_video_id_exit_all();
 int uvc_video_id_get(unsigned int seq);
 
@@ -80,23 +84,31 @@ bool uvc_video_get_uvc_process(int id);
 
 int uvc_buffer_init(int id);
 void uvc_buffer_deinit(int id);
-bool uvc_buffer_write_enable(int id);
-void uvc_buffer_write(unsigned short stamp,
-                      void* extra_data,
+bool uvc_buffer_write(void* extra_data,
                       size_t extra_size,
                       void* data,
                       size_t size,
                       unsigned int fcc,
-                      int id);
+                      int id,
+                      size_t frame_size_off);
 void uvc_set_user_resolution(int width, int height, int id);
 void uvc_get_user_resolution(int* width, int* height, int id);
 bool uvc_get_user_run_state(int id);
 void uvc_set_user_run_state(bool state, int id);
+int uvc_get_user_image_effect(int id);
+void uvc_set_user_image_effect(int effect, int id);
 void uvc_set_user_fcc(unsigned int fcc, int id);
 unsigned int uvc_get_user_fcc(int id);
 void uvc_memset_uvc_user(int id);
 pthread_t* uvc_video_get_uvc_pid(int id);
 void uvc_user_fill_buffer(struct uvc_device *dev, struct v4l2_buffer *buf, int id);
+int uvc_get_user_mirror_state(int id);
+void uvc_set_user_mirror_state(int state, int id);
+bool uvc_get_user_dcrop_state(int id);
+void uvc_set_user_dcrop_state(bool state, int id);
+void uvc_set_video_type(bool is_isp, int id);
+bool uvc_get_uvc_stream(int id);
+void uvc_set_uvc_stream(int id, bool start);
 
 #ifdef __cplusplus
 }
