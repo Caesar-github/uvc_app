@@ -3,6 +3,7 @@ PROJECT(uvc_app)
 
 add_definitions(-DSN_CODE="${SN_CODE}")
 add_definitions(-DUSB_UVC_FW_VERSION="${USB_FW_VERSION}")
+add_definitions(-DYUYV_AS_RAW)
 
 include_directories(uvc)
 
