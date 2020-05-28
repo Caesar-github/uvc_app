@@ -42,6 +42,42 @@ extern "C" {
 #define UVC_STAMP 65536
 #define ENABLE_UVC_H264 0
 
+#define SHA_LEN          32
+#define SIGN_LEN         64
+#define MAX_DATA_SIZE    (1024 * 10)
+
+#pragma pack(1)
+struct uvc_ext_data {
+    int16_t timestamp_s;
+    int64_t timestamp;
+    int32_t adc;
+    uint32_t rgb_frm_id;
+    uint32_t ir_frm_id;
+    uint32_t dp_frm_id;
+    uint8_t rgb_sha[SHA_LEN];
+    uint8_t ir_sha[SHA_LEN];
+    uint8_t dp_sha[SHA_LEN];
+    uint8_t sign[SIGN_LEN];
+    uint32_t frame_size;
+    uint32_t temp_fps;
+    uint8_t is_gray;
+    uint8_t is_real;
+    uint32_t sync_seq;
+    uint64_t sync_depth;
+    int32_t face_left;
+    int32_t face_top;
+    int32_t face_right;
+    int32_t face_bottom;
+    uint32_t curr_seq;
+    uint8_t reserved[28];
+
+    uint32_t version;
+    uint16_t data_type;
+    uint16_t data_size;
+    int8_t data[MAX_DATA_SIZE];
+};
+#pragma pack()
+
 struct uvc_encode {
     struct vpu_encode encode;
     struct video_drm encode_dst_buff;
