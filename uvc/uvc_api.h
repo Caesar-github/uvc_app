@@ -85,6 +85,8 @@ extern void (*uvc_iq_set_data_cb)(unsigned char *, int);
 extern void (*uvc_hue_set_cb)(short, void *);
 extern short (*uvc_hue_get_cb)(void *);
 extern void (*uvc_sat_data_cb)(void *, unsigned short, void *);
+extern void (*uvc_set_one_frame_liveness_cb)(void);
+extern void (*uvc_set_continuous_liveness_cb)(int);
 
 extern void *hue_set_device;
 extern void *hue_get_device; 

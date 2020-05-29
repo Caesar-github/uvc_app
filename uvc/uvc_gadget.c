@@ -58,6 +58,8 @@ void (*uvc_iq_set_data_cb)(unsigned char *, int) = NULL;
 void (*uvc_hue_set_cb)(short, void *) = NULL;
 short (*uvc_hue_get_cb)(void *) = NULL;
 void (*uvc_sat_data_cb)(void *, unsigned short, void *) = NULL;
+void (*uvc_set_one_frame_liveness_cb)(void) = NULL;
+void (*uvc_set_continuous_liveness_cb)(int) = NULL;
 
 void *hue_set_device = NULL;
 void *hue_get_device = NULL;
@@ -2468,6 +2470,21 @@ static int uvc_xu_ctrl_cs1(struct uvc_device *dev,
 
     case 0xFFFFFFE9:
         uvc_set_user_dcrop_state(true, uvc_video_id_get(get_uvc_rgb_cnt()));
+        break;
+
+    case 0xFFFFFFE8:
+        if (uvc_set_one_frame_liveness_cb)
+            uvc_set_one_frame_liveness_cb();
+        break;
+
+    case 0xFFFFFFE7:
+        if (uvc_set_continuous_liveness_cb)
+            uvc_set_continuous_liveness_cb(1);
+        break;
+
+    case 0xFFFFFFE6:
+        if (uvc_set_continuous_liveness_cb)
+            uvc_set_continuous_liveness_cb(0);
         break;
 
     default:
