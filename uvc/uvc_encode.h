@@ -49,7 +49,7 @@ extern "C" {
 #pragma pack(1)
 struct uvc_ext_data {
     int16_t timestamp_s;
-    int64_t timestamp;
+    uint64_t timestamp;
     int32_t adc;
     uint32_t rgb_frm_id;
     uint32_t ir_frm_id;
@@ -62,14 +62,14 @@ struct uvc_ext_data {
     uint32_t temp_fps;
     uint8_t is_gray;
     uint8_t is_real;
-    uint32_t sync_seq;
     uint64_t sync_depth;
+    uint64_t sync_rgb;
+    uint64_t sync_ir;
     int32_t face_left;
     int32_t face_top;
     int32_t face_right;
     int32_t face_bottom;
-    uint32_t curr_seq;
-    uint8_t reserved[28];
+    uint8_t reserved[20];
 
     uint32_t version;
     uint16_t data_type;
