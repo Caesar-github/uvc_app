@@ -16,10 +16,6 @@ extern "C" {
 #include "uvc_gadget.h"
 #include "uvc_video.h"
 
-#define CAM_DEPTH_ID	0
-#define CAM_RGB_ID	1
-#define CAM_IR_ID	2
-
 #define UVC_CB_VIDEO_OPEN		0
 #define UVC_CB_VIDEO_CLOSE		1
 #define UVC_CB_VIDEO_SET_TIME		2
@@ -185,33 +181,9 @@ static inline void uvc_set_callback(int type, struct uvc_callback cb,
     }
 }
 
-static inline int get_uvc_depth_cnt(void)
-{
-#ifdef CAM_DEPTH_ID
-    return CAM_DEPTH_ID;
-#else
-    return -1;
-#endif
-}
-
-static inline int get_uvc_ir_cnt(void)
-{
-#ifdef CAM_RGB_ID
-    return CAM_RGB_ID;
-#else
-    return -1;
-#endif
-}
-
-static inline int get_uvc_rgb_cnt(void)
-{
-#ifdef CAM_IR_ID
-    return CAM_IR_ID;
-#else
-    return -1;
-#endif
-}
-
+int get_uvc_depth_cnt(void);
+int get_uvc_ir_cnt(void);
+int get_uvc_rgb_cnt(void);
 bool get_cif_vga_enable(void);
 bool get_cif_ir_depth_enable(void);
 

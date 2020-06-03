@@ -23,6 +23,10 @@
 #include "uvc_api.h"
 
 /* forward declarations */
+static int uvc_depth_cnt;
+static int uvc_rgb_cnt;
+static int uvc_ir_cnt;
+
 static bool cif_enable = false;
 static bool cif_vga_enable = false; 
 static bool cif_depth_ir_start = false;
@@ -65,6 +69,21 @@ void *hue_set_device = NULL;
 void *hue_get_device = NULL;
 void *sat_device = NULL;
 void *ctrl_device = NULL;
+
+int get_uvc_depth_cnt(void)
+{
+    return uvc_depth_cnt;
+}
+
+int get_uvc_ir_cnt(void)
+{
+    return uvc_ir_cnt;
+}
+
+int get_uvc_rgb_cnt(void)
+{
+    return uvc_rgb_cnt;
+}
 
 bool get_cif_vga_enable(void)
 {
@@ -3282,6 +3301,21 @@ static void uvc_init_data(void)
     g_cif_cnt = 0;
     cif_depth_ir_start = false;
     g_suspend = 0;
+
+    uvc_depth_cnt = -1;
+    uvc_rgb_cnt = -1;
+    uvc_ir_cnt = -1;
+}
+
+static void get_uvc_index_to_name(unsigned int index, char *name)
+{
+    if (strstr(name, "depth") || strstr(name, "DEPTH")) {
+        uvc_depth_cnt = index;
+    } else if (strstr(name, "rgb") || strstr(name, "RGB")) {
+        uvc_rgb_cnt = index;
+    } else if (strstr(name, "ir") || strstr(name, "IR")) {
+        uvc_ir_cnt = index;
+    }
 }
 
 static void uvc_ctrl_close_device(void)
@@ -3310,11 +3344,17 @@ static void *uvc_pthread_run(void *arg)
         for (i = 0; i < CAM_MAX_NUM; i++) {
             fc[i] = configfs_parse_uvc_function(i);
             if (fc[i]) {
-                /*fc[i]->video_src =  video_src[i];*/
+                get_uvc_index_to_name(fc[i]->index, fc[i]->dev_name);
                 uvc_video_id_add(fc[i]);
             }
         }
 
+        /* The first UVC was not found to indicate that there are no uvc devices */
+        if (fc[0] == NULL) {
+            printf("Not found UVC device.\n");
+            sleep(1);
+            continue;
+        }
         uvc_pthread_wait();
 
         for (i = 0; i < CAM_MAX_NUM; i++) {
@@ -3334,6 +3374,9 @@ int uvc_pthread_create(void)
         printf("%s: pthread_create failed!\n", __func__);
         return -1;
     }
+
+    /* Wait for the usb configuration to complete */
+    sleep(1);
     return 0;
 }
 
@@ -3342,5 +3385,4 @@ void uvc_pthread_exit(void)
     run_flag = false;
     uvc_pthread_signal();
     pthread_join(run_id, NULL);
-} 
-
+}

@@ -214,12 +214,12 @@ static char *configfs_find_uvc_function(unsigned int index)
     return func_path;
 }
 
-static unsigned int udc_find_video_device(const char *udc, const char *function)
+static int udc_find_video_device(const char *udc, const char *function)
 {
     char *vpath;
     char *video = NULL;
     glob_t globbuf;
-    unsigned int video_id;
+    int video_id = -1;
     unsigned int i;
     int ret;
 
@@ -272,6 +272,7 @@ void configfs_free_uvc_function(struct uvc_function_config *fc)
     unsigned int i, j;
 
     free(fc->udc);
+    free(fc->dev_name);
 
     for (i = 0; i < fc->streaming.num_formats; ++i) {
         struct uvc_function_config_format *format =
@@ -654,6 +655,7 @@ struct uvc_function_config *configfs_parse_uvc_function(unsigned int index)
 
     function = basename(fpath);
 
+    fc->dev_name = attribute_read_str(fpath, "device_name");
     fc->udc = attribute_read_str(fpath, "../../UDC");
     fc->video = udc_find_video_device(fc->udc, function);
 

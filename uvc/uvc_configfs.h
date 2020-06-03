@@ -97,10 +97,11 @@ struct uvc_function_config_streaming {
  * @streaming: Streaming interface configuration
  */
 struct uvc_function_config {
-    unsigned int video;
-    unsigned int video_src;
+    int video;
+    int video_src;
     unsigned int index;
     char *udc;
+    char *dev_name;
 
     struct uvc_function_config_control control;
     struct uvc_function_config_streaming streaming;
