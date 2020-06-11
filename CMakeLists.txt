@@ -18,6 +18,7 @@ set(LIB_SOURCE
 )
 add_library(rkuvc SHARED ${LIB_SOURCE})
 
+link_libraries("librga.so")
 target_link_libraries(rkuvc pthread drm rockchip_mpp)
 
 set(SOURCE

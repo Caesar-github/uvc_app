@@ -36,6 +36,7 @@
 extern "C" {
 #include "vpu.h"
 }
+#include <rga/RgaApi.h>
 #include "uvc_video.h"
 #include "video_common.h"
 
@@ -81,10 +82,9 @@ struct uvc_ext_data {
 struct uvc_encode {
     struct vpu_encode encode;
     struct video_drm encode_dst_buff;
-    int rga_fd;
-    struct video_drm uvc_out;
-    struct video_drm uvc_mid;
-    struct video_drm uvc_pre;
+    bo_t rga_buf_bo;
+    int rga_buf_fd;
+
     void* out_virt;
     int out_fd;
     int video_id;

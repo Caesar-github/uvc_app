@@ -33,7 +33,50 @@
 #include "uvc_encode.h"
 #define UVC_MAX_WIDTH 1920
 #define UVC_MAX_HEIGHT 1080
+#define UVC_BPP       16
+
 extern "C" {
+}
+
+static int rga_buffer_init(int width, int height, int bpp, bo_t *rga_buf_bo,
+                           int *rga_buf_fd)
+{
+    int ret = -1;
+
+    ret = c_RkRgaInit();
+    if (ret) {
+        printf("c_RkRgaInit error : %s\n", strerror(errno));
+        return ret;
+    }
+    ret = c_RkRgaGetAllocBuffer(rga_buf_bo, width, height, bpp);
+    if (ret) {
+        printf("c_RkRgaGetAllocBuffer error : %s\n", strerror(errno));
+        return ret;
+    }
+    ret = c_RkRgaGetMmap(rga_buf_bo);
+    if (ret) {
+        printf("c_RkRgaGetMmap error : %s\n", strerror(errno));
+        return ret;
+    }
+    ret = c_RkRgaGetBufferFd(rga_buf_bo, rga_buf_fd);
+    if (ret)
+        printf("c_RkRgaGetBufferFd error : %s\n", strerror(errno));
+
+    return ret;
+}
+
+static int rga_buffer_deinit(bo_t *rga_buf_bo, int rga_buf_fd)
+{
+    int ret = -1;
+
+    close(rga_buf_fd);
+    ret = c_RkRgaUnmap(rga_buf_bo);
+    if (ret)
+        printf("c_RkRgaUnmap error : %s\n", strerror(errno));
+
+    ret = c_RkRgaFree(rga_buf_bo);
+
+    return ret;
 }
 
 int uvc_encode_init(struct uvc_encode *e)
@@ -46,28 +89,69 @@ int uvc_encode_init(struct uvc_encode *e)
         return -1;
     }
 
+    rga_buffer_init(UVC_MAX_WIDTH, UVC_MAX_HEIGHT, UVC_BPP,
+                    &e->rga_buf_bo, &e->rga_buf_fd);
+
     return 0;
 }
 
 void uvc_encode_exit(struct uvc_encode *e)
 {
     vpu_nv12_encode_jpeg_done(&e->encode);
+    rga_buffer_deinit(&e->rga_buf_bo, e->rga_buf_fd);
 }
 
-int uvc_norga_process(struct uvc_encode* e, void* in_virt, int in_fd) {
-    e->out_virt = in_virt;
-    e->out_fd = in_fd;
-    return 0;
+static int uvc_rga_rotation(unsigned int src_fmt, unsigned char* src_buf,
+                            int src_w, int src_h,
+                            unsigned int dst_fmt, int dst_fd, int dst_w,
+                            int dst_h, int rotation)
+{
+    int ret;
+    rga_info_t src;
+    rga_info_t dst;
+
+    if (!src_w || !src_h || !dst_w || !dst_h)
+        return -1;
+
+    memset(&src, 0, sizeof(rga_info_t));
+    src.fd = -1;
+    src.virAddr = src_buf;
+    src.mmuFlag = 1;
+
+    memset(&dst, 0, sizeof(rga_info_t));
+    dst.fd = dst_fd;
+    dst.mmuFlag = 1;
+
+    rga_set_rect(&src.rect, 0, 0, src_w, src_h, src_w, src_h, src_fmt);
+    src.rotation = rotation;
+    rga_set_rect(&dst.rect, 0, 0, dst_w, dst_h, dst_w, dst_h, dst_fmt);
+    ret = c_RkRgaBlit(&src, &dst, NULL);
+    if (ret)
+        printf("c_RkRgaBlit0 error : %s\n", strerror(errno));
+
+    return ret;
 }
+
 
 int uvc_pre_process(struct uvc_encode* e, int in_width, int in_height,
                     void* in_virt, int in_fd, int in_fmt)
 {
+    int dst_width, dst_height;
+    int out_fmt = in_fmt;
     int ret;
 
     uvc_set_uvc_stream(e->video_id, true);
+    uvc_get_user_resolution(&dst_width, &dst_height, e->video_id);
 
-    ret = uvc_norga_process(e, in_virt, in_fd);
+    if ((in_width == dst_height) && (in_height == dst_width)) {
+        uvc_rga_rotation(in_fmt, (unsigned char *)in_virt, in_width, in_height,
+            out_fmt, e->rga_buf_fd, dst_width, dst_height, HAL_TRANSFORM_ROT_90);
+        e->out_virt = e->rga_buf_bo.ptr;
+        e->out_fd = e->rga_buf_fd;
+    } else {
+        e->out_virt = in_virt;
+        e->out_fd = in_fd;
+    }
 
     return ret;
 }

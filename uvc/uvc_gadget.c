@@ -3352,7 +3352,7 @@ static void *uvc_pthread_run(void *arg)
         /* The first UVC was not found to indicate that there are no uvc devices */
         if (fc[0] == NULL) {
             printf("Not found UVC device.\n");
-            sleep(1);
+            sleep(3);
             continue;
         }
         uvc_pthread_wait();

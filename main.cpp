@@ -21,7 +21,7 @@ static int uvc_read_camera_buffer(struct uvc_encode *uvc_enc, void *buf,
     int in_fmt;
     int ret = -1;
 
-    in_fmt = 0;
+    in_fmt = RK_FORMAT_YCbCr_420_SP;
 
     uvc_enc->user_data = NULL;
     uvc_enc->user_size = 0;
