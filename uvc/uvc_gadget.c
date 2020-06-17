@@ -122,7 +122,7 @@ uvc_video_set_format(struct uvc_device *dev)
     fmt.fmt.pix.pixelformat = dev->fcc;
     fmt.fmt.pix.field = V4L2_FIELD_NONE;
     if (dev->fcc == V4L2_PIX_FMT_MJPEG)
-        fmt.fmt.pix.sizeimage = dev->imgsize * 1.5;
+        fmt.fmt.pix.sizeimage = dev->width * dev->height * 3 / 2;
     if (dev->fcc == V4L2_PIX_FMT_H264)
         fmt.fmt.pix.sizeimage = dev->width * dev->height * 3 / 2;
 
@@ -282,7 +282,6 @@ uvc_close(struct uvc_device *dev)
     pthread_mutex_destroy(&dev->sat_mutex);
     pthread_cond_destroy(&dev->sat_cond);
     close(dev->uvc_fd);
-    free(dev->imgdata);
     free(dev);
 }
 
@@ -564,7 +563,7 @@ uvc_video_reqbufs_userptr(struct uvc_device *dev, int nbufs)
             break;
         case V4L2_PIX_FMT_MJPEG:
         case V4L2_PIX_FMT_H264:
-            payload_size = dev->imgsize;
+            payload_size = dev->width * dev->height * 3 / 2;
             break;
         default:
             return -1;
@@ -583,10 +582,6 @@ uvc_video_reqbufs_userptr(struct uvc_device *dev, int nbufs)
                 for (j = 0; j < dev->height; ++j)
                     memset(dev->dummy_buf[i].start + j * bpl,
                            dev->color++, bpl);
-
-            if (V4L2_PIX_FMT_MJPEG == dev->fcc)
-                memcpy(dev->dummy_buf[i].start, dev->imgdata,
-                       dev->imgsize);
         }
     }
 
@@ -772,7 +767,7 @@ uvc_fill_streaming_control(struct uvc_device *dev,
         break;
     case V4L2_PIX_FMT_MJPEG:
     case V4L2_PIX_FMT_H264:
-        ctrl->dwMaxVideoFrameSize = dev->imgsize;
+        ctrl->dwMaxVideoFrameSize = frame->width * frame->height * 3 / 2;
         break;
     }
 
@@ -783,8 +778,7 @@ uvc_fill_streaming_control(struct uvc_device *dev,
         ctrl->dwMaxPayloadTransferSize = (dev->maxpkt) *
                                          (dev->mult + 1) * (dev->burst + 1);
     else
-        ctrl->dwMaxPayloadTransferSize = ctrl->dwMaxVideoFrameSize;
-        /* ctrl->dwMaxPayloadTransferSize = dev->fc->streaming.ep.wMaxPacketSize; */
+        ctrl->dwMaxPayloadTransferSize = UVC_MAX_PAYLOAD_SIZE;
 
     ctrl->bmFramingInfo = 3;
     ctrl->bPreferedVersion = 1;
@@ -2857,7 +2851,7 @@ uvc_events_process_data(struct uvc_device *dev, struct uvc_request_data *data)
             break;
         case V4L2_PIX_FMT_MJPEG:
         case V4L2_PIX_FMT_H264:
-            pixfmt.sizeimage = dev->imgsize;
+            pixfmt.sizeimage = pixfmt.width * pixfmt.height * 3 / 2;
             break;
         }
 
@@ -3025,19 +3019,6 @@ static void
 uvc_events_init(struct uvc_device *dev)
 {
     struct v4l2_event_subscription sub;
-    unsigned int payload_size;
-
-    switch (dev->fcc) {
-    case V4L2_PIX_FMT_YUYV:
-        payload_size = dev->width * dev->height * 2;
-        break;
-    case V4L2_PIX_FMT_MJPEG:
-    case V4L2_PIX_FMT_H264:
-        payload_size = dev->imgsize;
-        break;
-    default:
-        return;
-    }
 
     printf("%s\n", __func__);
     uvc_fill_streaming_control(dev, &dev->probe, 1, 1, 0);
@@ -3046,7 +3027,7 @@ uvc_events_init(struct uvc_device *dev)
     if (dev->bulk)
         /* FIXME Crude hack, must be negotiated with the driver. */
         dev->probe.dwMaxPayloadTransferSize =
-            dev->commit.dwMaxPayloadTransferSize = payload_size;
+            dev->commit.dwMaxPayloadTransferSize = UVC_MAX_PAYLOAD_SIZE;
 
     memset(&sub, 0, sizeof sub);
     sub.type = UVC_EVENT_SETUP;
@@ -3134,7 +3115,6 @@ uvc_gadget_main(struct uvc_function_config *fc)
     /* Set parameters as passed by user. */
     udev->width = 1280;
     udev->height = 720;
-    udev->imgsize = udev->width * udev->height * 1.5;
     udev->fcc = V4L2_PIX_FMT_MJPEG;
 
 

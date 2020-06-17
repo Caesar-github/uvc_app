@@ -43,6 +43,7 @@ extern "C" {
 #define CAM_MAX_NUM 3
 #define EXT_QUERY_CMD 0x82
 #define SAT_FILE_MAX_SIZE 2048
+#define UVC_MAX_PAYLOAD_SIZE (512 * 1024)
 
 /*
  * The UVC webcam gadget kernel driver (g_webcam.ko) supports changing
@@ -237,8 +238,6 @@ struct uvc_device {
 
     unsigned int bulk;
     uint8_t color;
-    unsigned int imgsize;
-    void *imgdata;
 
     /* USB speed specific */
     int mult;
