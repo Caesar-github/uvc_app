@@ -57,6 +57,7 @@ void (*uvc_video_set_iq_mode_cb)(int) = NULL;
 void (*uvc_video_set_focus_pos_cb)(int) = NULL;
 void (*uvc_video_set_image_effect_cb)(int) = NULL;
 void (*uvc_video_stream_control_cb)(int, int) = NULL;
+void (*uvc_camera_control_cb)(int flag) = NULL;
 void (*uvc_iq_get_data_cb)(unsigned char *, unsigned char *, int) = NULL;
 void (*uvc_iq_set_data_cb)(unsigned char *, int) = NULL;
 void (*uvc_hue_set_cb)(short, void *) = NULL;
@@ -2424,6 +2425,8 @@ static int uvc_xu_ctrl_cs1(struct uvc_device *dev,
                 uvc_video_stream_control_cb(4, 1);
             }
         }
+        if (uvc_camera_control_cb)
+            uvc_camera_control_cb(1);
         break;
 
     case 0xFFFFFFF2:
@@ -2439,6 +2442,8 @@ static int uvc_xu_ctrl_cs1(struct uvc_device *dev,
                     uvc_video_stream_control_cb(4, 0);
             }
         }
+        if (uvc_camera_control_cb)
+            uvc_camera_control_cb(0);
         uvc_set_uvc_stream(dev->video_id, false);
         dev->bulk_timeout = 0;
         break;
@@ -3270,6 +3275,9 @@ uvc_gadget_main(struct uvc_function_config *fc)
     uvc_close(udev);
 
     uvc_buffer_deinit(id);
+
+    if (uvc_camera_control_cb)
+        uvc_camera_control_cb(0);
 
     return 0;
 }

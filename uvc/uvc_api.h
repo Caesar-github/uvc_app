@@ -74,6 +74,7 @@ extern void (*uvc_video_set_iq_mode_cb)(int);
 extern void (*uvc_video_set_focus_pos_cb)(int);
 extern void (*uvc_video_set_image_effect_cb)(int);
 extern void (*uvc_video_stream_control_cb)(int, int);
+extern void (*uvc_camera_control_cb)(int flag);
 extern void (*uvc_video_restart_isp_cb)();
 extern void (*uvc_video_restart_cif_cb)();
 extern void (*uvc_iq_get_data_cb)(unsigned char *, unsigned char *, int);
