@@ -270,9 +270,6 @@ struct uvc_device {
     pthread_t vp;
     bool vp_flag;
 
-    int suspend;
-    int suspend_cnt;
-
     bool continuous;
     int bulk_timeout;
 };

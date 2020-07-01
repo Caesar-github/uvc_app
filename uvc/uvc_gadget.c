@@ -31,9 +31,6 @@ static bool cif_enable = false;
 static bool cif_vga_enable = false; 
 static bool cif_depth_ir_start = false;
 static int g_cif_cnt = 0;
-static int g_suspend;
-static bool g_suspend_enable = false;
-static int g_uvc_cnt = 0;
 
 /* uvc run thread */
 static pthread_t run_id = 0;
@@ -41,7 +38,6 @@ static bool run_flag;
 static pthread_cond_t run_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t run_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t start_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t g_suspend_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* callbacks */
 void (*uvc_video_open_cb)(void *);
@@ -258,7 +254,6 @@ uvc_open(struct uvc_device **uvc, char *devname)
     pthread_mutex_init(&dev->sat_mutex, NULL);
     pthread_cond_init(&dev->sat_cond, NULL);
     *uvc = dev;
-    g_uvc_cnt++;
 
     return 0;
 
@@ -278,7 +273,6 @@ static void saturation_clear(struct uvc_device *dev)
 static void
 uvc_close(struct uvc_device *dev)
 {
-    g_uvc_cnt--;
     saturation_clear(dev);
     pthread_mutex_destroy(&dev->sat_mutex);
     pthread_cond_destroy(&dev->sat_cond);
@@ -2456,7 +2450,6 @@ static int uvc_xu_ctrl_cs1(struct uvc_device *dev,
 
     case 0xFFFFFFF0:
         uvc_pthread_signal();
-        g_suspend_enable = true;
         break;
 
     case 0xFFFFFFEF:
@@ -2897,35 +2890,6 @@ err:
     return ret;
 }
 
-static void hsc_xc_power(bool on)
-{
-#ifdef V12_SUSPEND_RESUME_GPIO_CTL
-    // GPIO0_B3: HSC_RST
-    // GPIO0_C0: PWREN_HSC
-    // GPIO0_C1: PWREN_XC7081
-    system("/usr/local/sbin/io -4 0x20060004 0x00C00000");
-    system("/usr/local/sbin/io -4 0x20060008 0x00030000");
-    system("/usr/local/sbin/io -4 0x20060008 0x000C0000");
-
-    if (on) {
-        // PWREN_HSC: 0
-        system("/usr/local/sbin/io -4 0x20060018 0x00030002");
-        usleep(300);
-        // HSC_RST: 1
-        system("/usr/local/sbin/io -4 0x20060014 0x00C00040");
-        system("/usr/local/sbin/io -4 0x20060018 0x000C0004");
-    } else {
-        // HSC_RST: 0
-        system("/usr/local/sbin/io -4 0x20060014 0x00C00080");
-        usleep(300);
-        // PWREN_HSC: 1
-        system("/usr/local/sbin/io -4 0x20060018 0x00030001");
-        system("/usr/local/sbin/io -4 0x20060018 0x000C0008");
-    }
-    //system("/usr/local/sbin/io -4 -l 0x100 0x20060000");
-#endif
-}
-
 static void
 uvc_events_process(struct uvc_device *dev)
 {
@@ -2992,26 +2956,9 @@ uvc_events_process(struct uvc_device *dev)
 
         return;
     case UVC_EVENT_RESUME:
-            return;
-
-#ifdef CONFIG_SUSPEND_ENABLE
-        hsc_xc_power(true);
-        printf("UVC_EVENT_RESUME\n");
-        dev->suspend = 0;
-#endif
-
         return;
+
     case UVC_EVENT_SUSPEND:
-            return;
-
-#ifdef CONFIG_SUSPEND_ENABLE
-        if (!g_suspend_enable)
-            return;
-        printf("UVC_EVENT_SUSPEND\n");
-        dev->suspend = 1;
-        dev->suspend_cnt = 0;
-#endif
-
         return;
     }
 
@@ -3184,42 +3131,6 @@ uvc_gadget_main(struct uvc_function_config *fc)
     udev->height = 0;
 
     while (uvc_get_user_run_state(udev->video_id)) {
-        if (g_suspend_enable) {
-            if (udev->suspend)
-                udev->suspend_cnt++;
-            if (udev->suspend_cnt > 100 && udev->suspend) {
-                if (!uvc_video_get_uvc_process(udev->video_id)) {
-                    pthread_mutex_lock(&g_suspend_lock);
-                    if (g_suspend >= 0)
-                        g_suspend++;
-                    if (g_suspend == g_uvc_cnt) {
-                        g_suspend = 0;
-                        hsc_xc_power(false);
-                        g_suspend_enable = false;
-                        system("echo mem > /sys/power/state");
-                    }
-                    pthread_mutex_unlock(&g_suspend_lock);
-                    while (g_suspend > 0) {
-                        usleep(100000);
-                        pthread_mutex_lock(&g_suspend_lock);
-                        if (g_suspend && !udev->suspend) {
-                            g_suspend--;
-                            pthread_mutex_unlock(&g_suspend_lock);
-                            break;
-                        }
-                        pthread_mutex_unlock(&g_suspend_lock);
-                    }
-                } else {
-                    pthread_mutex_lock(&g_suspend_lock);
-                    g_suspend = -1;
-                    pthread_mutex_unlock(&g_suspend_lock);
-                    uvc_pthread_signal();
-                }
-                udev->suspend = 0;
-                udev->suspend_cnt = 0;
-            }
-        }
-
         FD_ZERO(&fdsu);
 
         /* We want both setup and data events on UVC interface.. */
@@ -3291,7 +3202,6 @@ static void uvc_init_data(void)
     cif_vga_enable = false;
     g_cif_cnt = 0;
     cif_depth_ir_start = false;
-    g_suspend = 0;
 
     uvc_depth_cnt = -1;
     uvc_rgb_cnt = -1;
