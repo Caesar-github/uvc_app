@@ -61,6 +61,11 @@ short (*uvc_hue_get_cb)(void *) = NULL;
 void (*uvc_sat_data_cb)(void *, unsigned short, void *) = NULL;
 void (*uvc_set_one_frame_liveness_cb)(void) = NULL;
 void (*uvc_set_continuous_liveness_cb)(int) = NULL;
+void (*uvc_set_frame_output_cb)(int) = NULL;
+void (*uvc_set_pro_time_cb)(unsigned int flag) = NULL;
+void (*uvc_set_pro_current_cb)(unsigned int flag) = NULL;
+void (*uvc_set_denoise_cb)(unsigned int center, unsigned int enhance) = NULL;
+void (*uvc_write_eeprom_cb)(void) = NULL;
 
 void *hue_set_device = NULL;
 void *hue_get_device = NULL;
@@ -2374,8 +2379,8 @@ static int uvc_xu_ctrl_cs1(struct uvc_device *dev,
         break;
 
     case 0xFFFFFFFB:
-        /*if (uvc_video_set_frame_type_cb)
-            uvc_video_set_frame_type_cb(DISP_CMD_CALIBRATION_WRITE);*/
+        if (uvc_write_eeprom_cb)
+            uvc_write_eeprom_cb();
         break;
 
     case 0xFFFFFFFA:
@@ -2456,21 +2461,29 @@ static int uvc_xu_ctrl_cs1(struct uvc_device *dev,
         dev->continuous = true;
         if (uvc_video_set_time_cb)
             uvc_video_set_time_cb(0, -1);
+        if (uvc_set_frame_output_cb)
+            uvc_set_frame_output_cb(-1);
         break;
 
     case 0xFFFFFFEE:
         if (uvc_video_set_time_cb)
             uvc_video_set_time_cb(0, -2);
+        if (uvc_set_frame_output_cb)
+            uvc_set_frame_output_cb(-2);
         break;
 
     case 0xFFFFFFED:
         if (uvc_video_set_time_cb)
             uvc_video_set_time_cb(0, -3);
+        if (uvc_set_frame_output_cb)
+            uvc_set_frame_output_cb(-3);
         break;
 
     case 0xFFFFFFEC:
         if (uvc_video_set_time_cb)
             uvc_video_set_time_cb(0, -6);
+        if (uvc_set_frame_output_cb)
+            uvc_set_frame_output_cb(-6);
         break;
 
     case 0xFFFFFFEB:
@@ -2579,6 +2592,7 @@ static int uvc_xu_ctrl_cs4(struct uvc_device *dev,
     unsigned char *ctrl = dev->xu_query.ctrl4;
     unsigned int ctrl_size = sizeof(dev->xu_query.ctrl4);
     unsigned int command = 0;
+    unsigned int *value;
 
     if (ctrl_size >= data->length) {
         memset(ctrl, 0, ctrl_size);
@@ -2633,6 +2647,27 @@ static int uvc_xu_ctrl_cs4(struct uvc_device *dev,
 
         case 0x00000009:
             uvc_get_current_output(ctrl, ctrl_size, dev);
+            break;
+
+        case 0x0000000A:
+            printf("uvc set pro time\n");
+            value = (unsigned int*)(&ctrl[4]);
+            if (uvc_set_pro_time_cb)
+                uvc_set_pro_time_cb(value[0]);
+            break;
+
+        case 0x0000000B:
+            printf("uvc set denoise\n");
+            value = (unsigned int*)(&ctrl[4]);
+            if (uvc_set_denoise_cb)
+                uvc_set_denoise_cb(value[0], value[1]);
+            break;
+
+        case 0x0000000C:
+            printf("uvc set pro current\n");
+            value = (unsigned int*)(&ctrl[4]);
+            if (uvc_set_pro_current_cb)
+                uvc_set_pro_current_cb(value[0]);
             break;
 
         default:

@@ -84,6 +84,11 @@ extern short (*uvc_hue_get_cb)(void *);
 extern void (*uvc_sat_data_cb)(void *, unsigned short, void *);
 extern void (*uvc_set_one_frame_liveness_cb)(void);
 extern void (*uvc_set_continuous_liveness_cb)(int);
+extern void (*uvc_set_frame_output_cb)(int);
+extern void (*uvc_set_pro_time_cb)(unsigned int flag);
+extern void (*uvc_set_pro_current_cb)(unsigned int flag);
+extern void (*uvc_set_denoise_cb)(unsigned int center, unsigned int enhance);
+extern void (*uvc_write_eeprom_cb)(void);
 
 extern void *hue_set_device;
 extern void *hue_get_device; 
