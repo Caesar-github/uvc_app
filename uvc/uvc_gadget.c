@@ -2092,18 +2092,18 @@ saturation_communicate(struct uvc_device *dev, struct uvc_request_data *data)
 }
 
 static void
-uvc_get_release_version(unsigned char *ctrl) {
+uvc_get_release_version(unsigned char *ctrl, unsigned int size) {
     char buf[1024];
 
-    memset(ctrl, 0, sizeof(ctrl));
+    memset(ctrl, 0, size);
     memcpy(ctrl, "Version", sizeof("Version"));
     memset(buf, 0, sizeof(buf));
     memcpy(buf, USB_UVC_FW_VERSION, sizeof(USB_UVC_FW_VERSION));
-    memcpy(ctrl, buf, sizeof(ctrl) - 1);
+    memcpy(ctrl, buf, size - 1);
 }
 
 static void
-uvc_get_sn_code(unsigned char *ctrl) {
+uvc_get_sn_code(unsigned char *ctrl, unsigned int size) {
 #define DATE_PATH "/sys/devices/10270000.spi/spi_master/spi0/spi0.0/product_date"
 
     char sn_data[64];
@@ -2117,12 +2117,12 @@ uvc_get_sn_code(unsigned char *ctrl) {
         }
         close(fd);
     }
-    memset(ctrl, 0, sizeof(ctrl));
-    memcpy(ctrl, sn_data, sizeof(ctrl) - 1);
+    memset(ctrl, 0, size);
+    memcpy(ctrl, sn_data, size - 1);
 }
 
 static int
-uvc_get_calib_pos(unsigned char *ctrl) {
+uvc_get_calib_pos(unsigned char *ctrl, unsigned int size) {
     int fd;
     int ret = 0;
     loff_t pos = 0;
@@ -2134,7 +2134,7 @@ uvc_get_calib_pos(unsigned char *ctrl) {
     int i;
     int pos_x1, pos_y1, pos_x2, pos_y2;
 
-    memset(ctrl, 0, sizeof(ctrl));
+    memset(ctrl, 0, size);
 
     fd = open("/dev/ref", O_RDONLY);
     if (fd < 0) {
@@ -2236,36 +2236,37 @@ err:
 }
 
 static void
-uvc_get_model_name(unsigned char *ctrl)
+uvc_get_model_name(unsigned char *ctrl, unsigned int size)
 {
     printf("%s %s\n", __func__, SN_CODE);
-    memset(ctrl, 0, sizeof(ctrl));
-    strncpy(ctrl, SN_CODE, sizeof(ctrl) - 1);
+    memset(ctrl, 0, size);
+    strncpy(ctrl, SN_CODE, size - 1);
 }
 
 static void
-uvc_get_support_list(unsigned char *ctrl)
+uvc_get_support_list(unsigned char *ctrl, unsigned int size)
 {
-   if (0 == strcmp(SN_CODE, "R2011200") ||
-       0 == strcmp(SN_CODE, "R2011301")) {
-       ctrl[0] = 1;
-       ctrl[1] = 1;
-       ctrl[2] = 1;
-   }
+    memset(ctrl, 0, size);
+    if (0 == strcmp(SN_CODE, "R2011200") ||
+        0 == strcmp(SN_CODE, "R2011301")) {
+        ctrl[0] = 1;
+        ctrl[1] = 1;
+        ctrl[2] = 1;
+    }
 }
 
 static void
-uvc_get_current_output(struct uvc_device *dev)
+uvc_get_current_output(unsigned char *ctrl, unsigned int size,
+                       struct uvc_device *dev)
 {
-    unsigned char *ctrl = dev->xu_query.ctrl4;
-    size_t size = 0;
+    size_t out_size = 0;
 
-    memset(ctrl, 0, sizeof(ctrl));
+    memset(ctrl, 0, size);
     memcpy(ctrl, &dev->fcc, sizeof(dev->fcc));
-    size += sizeof(dev->fcc);
-    memcpy(ctrl + size, &dev->width, sizeof(dev->width));
-    size += sizeof(dev->width);
-    memcpy(ctrl + size, &dev->height, sizeof(dev->height));
+    out_size += sizeof(dev->fcc);
+    memcpy(ctrl + out_size, &dev->width, sizeof(dev->width));
+    out_size += sizeof(dev->width);
+    memcpy(ctrl + out_size, &dev->height, sizeof(dev->height));
 }
 
 static void uvc_pu_ctrl(struct uvc_device *dev, uint8_t cs, struct uvc_request_data *data)
@@ -2346,12 +2347,13 @@ static int uvc_xu_ctrl_cs1(struct uvc_device *dev,
         struct uvc_request_data *data)
 {
     unsigned char *ctrl = dev->xu_query.ctrl1;
+    unsigned int ctrl_size = sizeof(dev->xu_query.ctrl1);
     unsigned int command = 0;
 
-    if (sizeof(ctrl) < data->length)
+    if (ctrl_size < data->length)
         return -1;
 
-    memset(ctrl, 0, sizeof(ctrl));
+    memset(ctrl, 0, ctrl_size);
     memcpy(ctrl, data->data, data->length);
     memcpy(&command, ctrl, sizeof(command));
     printf("extension ctrl cs1 set cur data: 0x%02x\n", ctrl[0]);
@@ -2517,8 +2519,9 @@ static int uvc_xu_ctrl_cs2(struct uvc_device *dev,
         struct uvc_request_data *data)
 {
     unsigned char *ctrl = dev->xu_query.ctrl2;
+    unsigned int ctrl_size = sizeof(dev->xu_query.ctrl2);
 
-    if (sizeof(ctrl) >= data->length) {
+    if (ctrl_size >= data->length) {
         memcpy(ctrl, data->data, data->length);
         memcpy(&dev->xu_query.length, &ctrl[1], 2);
         memcpy(&dev->xu_query.checksum, &ctrl[3], 2);
@@ -2581,47 +2584,48 @@ static int uvc_xu_ctrl_cs4(struct uvc_device *dev,
         struct uvc_request_data *data)
 {
     unsigned char *ctrl = dev->xu_query.ctrl4;
+    unsigned int ctrl_size = sizeof(dev->xu_query.ctrl4);
     unsigned int command = 0;
 
-    if (sizeof(ctrl) >= data->length) {
-        memset(ctrl, 0, sizeof(ctrl));
+    if (ctrl_size >= data->length) {
+        memset(ctrl, 0, ctrl_size);
         memcpy(ctrl, data->data, data->length);
         memcpy(&command, ctrl, sizeof(command));
         printf("extension ctrl cs4 set cur data: 0x%02x\n", ctrl[0]);
 
         switch (command) {
         case 0x00000000:
-            uvc_get_release_version(ctrl);
+            uvc_get_release_version(ctrl, ctrl_size);
             break;
 
         case 0x00000001:
-            uvc_get_sn_code(ctrl);
+            uvc_get_sn_code(ctrl, ctrl_size);
             break;
 
         case 0x00000002:
-            uvc_get_calib_pos(ctrl);
+            uvc_get_calib_pos(ctrl, ctrl_size);
             break;
 
         case 0x00000003:
             printf("get pcba sn\n");
-            memset(ctrl, 0, sizeof(ctrl));
-            //vendor_storage_read(sizeof(ctrl), ctrl, VENDOR_SN_ID);
+            memset(ctrl, 0, ctrl_size);
+            //vendor_storage_read(ctrl_size, ctrl, VENDOR_SN_ID);
             break;
 
         case 0x00000004:
             printf("get pcba result\n");
-            memset(ctrl, 0, sizeof(ctrl));
-            //vendor_storage_read(sizeof(ctrl), ctrl, VENDOR_PCBA_RESULT_ID);
+            memset(ctrl, 0, ctrl_size);
+            //vendor_storage_read(ctrl_size, ctrl, VENDOR_PCBA_RESULT_ID);
             break;
 
         case 0x00000005:
             printf("get test result\n");
-            memset(ctrl, 0, sizeof(ctrl));
-            //vendor_storage_read(sizeof(ctrl), ctrl, VENDOR_TEST_RESULT_ID);
+            memset(ctrl, 0, ctrl_size);
+            //vendor_storage_read(ctrl_size, ctrl, VENDOR_TEST_RESULT_ID);
             break;
 
         case 0x00000006:
-            uvc_get_model_name(ctrl);
+            uvc_get_model_name(ctrl, ctrl_size);
             break;
 
         case 0x00000007:
@@ -2631,12 +2635,11 @@ static int uvc_xu_ctrl_cs4(struct uvc_device *dev,
 
         case 0x00000008:
             printf("get support list\n");
-            memset(ctrl, 0, sizeof(ctrl));
-            uvc_get_support_list(ctrl);
+            uvc_get_support_list(ctrl, ctrl_size);
             break;
 
         case 0x00000009:
-            uvc_get_current_output(dev);
+            uvc_get_current_output(ctrl, ctrl_size, dev);
             break;
 
         default:
