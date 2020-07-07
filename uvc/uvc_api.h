@@ -89,6 +89,8 @@ extern void (*uvc_set_pro_time_cb)(unsigned int flag);
 extern void (*uvc_set_pro_current_cb)(unsigned int flag);
 extern void (*uvc_set_denoise_cb)(unsigned int center, unsigned int enhance);
 extern void (*uvc_write_eeprom_cb)(void);
+extern void (*uvc_ov_set_hflip_cb)(int val);
+extern void (*uvc_ov_set_vflip_cb)(int val);
 
 extern void *hue_set_device;
 extern void *hue_get_device; 

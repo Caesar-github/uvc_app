@@ -66,6 +66,8 @@ void (*uvc_set_pro_time_cb)(unsigned int flag) = NULL;
 void (*uvc_set_pro_current_cb)(unsigned int flag) = NULL;
 void (*uvc_set_denoise_cb)(unsigned int center, unsigned int enhance) = NULL;
 void (*uvc_write_eeprom_cb)(void) = NULL;
+void (*uvc_ov_set_hflip_cb)(int val) = NULL;
+void (*uvc_ov_set_vflip_cb)(int val) = NULL;
 
 void *hue_set_device = NULL;
 void *hue_get_device = NULL;
@@ -2638,6 +2640,10 @@ static int uvc_xu_ctrl_cs4(struct uvc_device *dev,
         case 0x00000007:
             printf("set image state: %d\n", ctrl[4]);
             uvc_set_user_mirror_state(ctrl[4], dev->video_id);
+            if (ctrl[4] == 2 && uvc_ov_set_hflip_cb)
+                uvc_ov_set_hflip_cb(1);
+            if (ctrl[4] == 3 && uvc_ov_set_vflip_cb)
+                uvc_ov_set_vflip_cb(1);
             break;
 
         case 0x00000008:
