@@ -68,6 +68,8 @@ void (*uvc_set_denoise_cb)(unsigned int center, unsigned int enhance) = NULL;
 void (*uvc_write_eeprom_cb)(void) = NULL;
 void (*uvc_ov_set_hflip_cb)(int val) = NULL;
 void (*uvc_ov_set_vflip_cb)(int val) = NULL;
+void (*uvc_preisp_set_hflip_cb)(int val) = NULL;
+void (*uvc_preisp_set_vflip_cb)(int val) = NULL;
 
 void *hue_set_device = NULL;
 void *hue_get_device = NULL;
@@ -2270,6 +2272,37 @@ uvc_get_current_output(unsigned char *ctrl, unsigned int size,
     memcpy(ctrl + out_size, &dev->height, sizeof(dev->height));
 }
 
+static void
+uvc_set_image_state(unsigned char state)
+{
+    switch (state) {
+    case 0:
+        if (uvc_ov_set_hflip_cb)
+            uvc_ov_set_hflip_cb(0);
+        if (uvc_ov_set_vflip_cb)
+            uvc_ov_set_vflip_cb(0);
+        if (uvc_preisp_set_hflip_cb)
+            uvc_preisp_set_hflip_cb(0);
+        if (uvc_preisp_set_vflip_cb)
+            uvc_preisp_set_vflip_cb(0);
+        break;
+    case 2:
+        if (uvc_ov_set_hflip_cb)
+            uvc_ov_set_hflip_cb(1);
+        if (uvc_preisp_set_hflip_cb)
+            uvc_preisp_set_hflip_cb(1);
+        break;
+    case 3:
+        if (uvc_ov_set_vflip_cb)
+            uvc_ov_set_vflip_cb(1);
+        if (uvc_preisp_set_vflip_cb)
+            uvc_preisp_set_vflip_cb(1);
+        break;
+    default:
+        break;
+    }
+}
+
 static void uvc_pu_ctrl(struct uvc_device *dev, uint8_t cs, struct uvc_request_data *data)
 {
     switch (cs) {
@@ -2640,10 +2673,7 @@ static int uvc_xu_ctrl_cs4(struct uvc_device *dev,
         case 0x00000007:
             printf("set image state: %d\n", ctrl[4]);
             uvc_set_user_mirror_state(ctrl[4], dev->video_id);
-            if (ctrl[4] == 2 && uvc_ov_set_hflip_cb)
-                uvc_ov_set_hflip_cb(1);
-            if (ctrl[4] == 3 && uvc_ov_set_vflip_cb)
-                uvc_ov_set_vflip_cb(1);
+            uvc_set_image_state(ctrl[4]);
             break;
 
         case 0x00000008:
