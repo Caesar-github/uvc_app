@@ -37,6 +37,7 @@ extern "C" {
 #include "vpu.h"
 }
 #include <rga/RgaApi.h>
+#include <rockface/rockface.h>
 #include "uvc_video.h"
 #include "video_common.h"
 
@@ -46,6 +47,8 @@ extern "C" {
 #define SHA_LEN          32
 #define SIGN_LEN         64
 #define MAX_DATA_SIZE    (1024 * 10)
+
+#define UVC_EXT_VERSION 1001
 
 #pragma pack(1)
 struct uvc_ext_data {
@@ -62,20 +65,10 @@ struct uvc_ext_data {
     uint32_t frame_size;
     uint32_t temp_fps;
     uint8_t is_gray;
-    uint8_t is_real;
-    uint64_t sync_depth;
-    uint64_t sync_rgb;
-    uint64_t sync_ir;
-    int32_t face_left;
-    int32_t face_top;
-    int32_t face_right;
-    int32_t face_bottom;
-    uint8_t reserved[20];
+    uint8_t reserved[61];
 
     uint32_t version;
-    uint16_t data_type;
-    uint16_t data_size;
-    int8_t data[MAX_DATA_SIZE];
+    rockface_result_t face_result;
 };
 #pragma pack()
 
