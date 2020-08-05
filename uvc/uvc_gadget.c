@@ -22,13 +22,15 @@
 #include "uvc_video.h"
 #include "uvc_api.h"
 
+#define PREISP_PRODUCT_DATE_NAME    "sn_code"
+
 /* forward declarations */
 static int uvc_depth_cnt;
 static int uvc_rgb_cnt;
 static int uvc_ir_cnt;
 
 static bool cif_enable = false;
-static bool cif_vga_enable = false; 
+static bool cif_vga_enable = false;
 static bool cif_depth_ir_start = false;
 static int g_cif_cnt = 0;
 
@@ -2108,21 +2110,72 @@ uvc_get_release_version(unsigned char *ctrl, unsigned int size) {
 
 static void
 uvc_get_sn_code(unsigned char *ctrl, unsigned int size) {
-#define DATE_PATH "/sys/devices/10270000.spi/spi_master/spi0/spi0.0/product_date"
-
-    char sn_data[64];
+    int i;
     int fd;
+    loff_t pos = 0;
+    int ret = 0;
+    char *file_data = NULL;
+    unsigned int file_size = 0;
+    struct calib_head head;
 
-    memset(sn_data, 0, sizeof(sn_data));
-    fd = open(DATE_PATH, O_RDONLY);
-    if (fd >= 0) {
-        if (lseek(fd, 0, SEEK_SET) != -1) {
-            read(fd, sn_data, sizeof(sn_data) - 1);
-        }
-        close(fd);
+    fd = open("/data/ref_data.img", O_RDONLY);
+    if (fd < 0) {
+        ret = -EFAULT;
+        printf("open ref failed!\n");
+        goto err;
     }
+
+    lseek(fd, 0, SEEK_SET);
+    read(fd, (char *)&head, sizeof(head));
+    if (strncmp(head.magic, PREISP_CALIB_MAGIC, sizeof(head.magic))) {
+        ret = -EFAULT;
+        printf("%s: magic(%s) is unmatch\n", __func__, head.magic);
+        goto err;
+    }
+
+    for (i = 0; i < head.items_number; i++) {
+        if (!strncmp(head.item[i].name, PREISP_PRODUCT_DATE_NAME, sizeof(head.item[i].name)))
+            break;
+    }
+
+    if (i >= head.items_number) {
+        ret = -EFAULT;
+        printf("%s: cannot find %s\n", __func__, PREISP_PRODUCT_DATE_NAME);
+        goto err;
+    }
+
+    file_size = head.item[i].size;
+    file_data = (char *)malloc(file_size);
+    if (!file_data) {
+        ret = -ENOMEM;
+        printf("%s: no memmory\n", __func__);
+        goto err;
+    }
+
+    pos = head.item[i].offset;
+    lseek(fd, pos, SEEK_SET);
+    ret = read(fd, file_data, head.item[i].size);
+    if (ret <= 0) {
+        ret = -EFAULT;
+        printf("%s: read error: ret=%d\n", __func__, ret);
+        goto err;
+    }
+
+    printf("file_size %d data:%s\n",file_size,file_data);
     memset(ctrl, 0, size);
-    memcpy(ctrl, sn_data, size - 1);
+    memcpy(ctrl, file_data, size);
+
+    if(size < file_size){
+        printf("%s: file size %d too large,sn code maybe incomplate.\n", __func__, file_size);
+        goto err;
+    }
+err:
+    if (file_data)
+        free(file_data);
+    if (fd >= 0)
+        close(fd);
+
+    return ;
 }
 
 static int
@@ -2140,7 +2193,7 @@ uvc_get_calib_pos(unsigned char *ctrl, unsigned int size) {
 
     memset(ctrl, 0, size);
 
-    fd = open("/dev/ref", O_RDONLY);
+    fd = open("/data/ref_data.img", O_RDONLY);
     if (fd < 0) {
 		ret = -EFAULT;
         printf("open ref failed!\n");
