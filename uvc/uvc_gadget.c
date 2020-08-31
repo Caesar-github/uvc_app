@@ -38,6 +38,7 @@ static bool run_flag;
 static pthread_cond_t run_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t run_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t start_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool __is_uvc_running = true;
 
 /* callbacks */
 void (*uvc_video_open_cb)(void *);
@@ -2485,11 +2486,11 @@ static int uvc_xu_ctrl_cs1(struct uvc_device *dev,
         break;
 
     case 0xFFFFFFF1:
-        uvc_pthread_signal();
+        __is_uvc_running = false;
         break;
 
     case 0xFFFFFFF0:
-        uvc_pthread_signal();
+        __is_uvc_running = false;
         break;
 
     case 0xFFFFFFEF:
@@ -3342,6 +3343,7 @@ static void *uvc_pthread_run(void *arg)
 int uvc_pthread_create(void)
 {
     run_flag = true;
+    __is_uvc_running = true;
     if (pthread_create(&run_id, NULL, uvc_pthread_run, NULL)) {
         printf("%s: pthread_create failed!\n", __func__);
         return -1;
@@ -3357,4 +3359,9 @@ void uvc_pthread_exit(void)
     run_flag = false;
     uvc_pthread_signal();
     pthread_join(run_id, NULL);
+}
+
+int uvc_state_get()
+{
+    return __is_uvc_running;
 }

@@ -301,6 +301,8 @@ struct calib_head {
 
 int uvc_gadget_main(struct uvc_function_config *fc);
 
+int uvc_state_get(void);
+
 #ifdef __cplusplus
 }
 #endif
