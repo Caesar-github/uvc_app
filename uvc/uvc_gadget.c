@@ -2524,6 +2524,10 @@ static int uvc_xu_ctrl_cs1(struct uvc_device *dev,
 
     case 0xFFFFFFEB:
         /* set function to adb*/
+        if (uvc_camera_control_cb)
+            uvc_camera_control_cb(0);
+        system("echo usb_adb_en > /data/.usb_config");
+        system("reboot");
         break;
 
     case 0xFFFFFFEA:
