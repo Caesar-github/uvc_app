@@ -172,6 +172,8 @@ int video_drm_free(struct video_drm *bo)
 {
     drm_unmap_buffer(bo->buffer, bo->size);
     drm_free(bo->fd, bo->handle);
+    if(bo->handle_fd)
+        close(bo->handle_fd);
     drm_close(bo->fd);
 
     return 0;
