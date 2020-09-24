@@ -37,6 +37,13 @@ extern "C" {
 #define UVC_CB_HUE_GET			18
 #define UVC_CB_SAT_DATA			19
 
+typedef enum uvcgdt_state {
+  UVCGDT_RUNNING = 0,
+  UVCGDT_RESET,
+  UVCGDT_SLEEP,
+  UVCGDT_EXIT,
+} uvcgdt_state;
+
 /* Callback facilities */
 struct uvc_callback {
     void (*video_open)(void *dev);
@@ -199,6 +206,8 @@ bool get_cif_ir_depth_enable(void);
 
 int uvc_pthread_create(void);
 void uvc_pthread_exit(void);
+
+uvcgdt_state uvcgdt_state_get(void);
 
 #ifdef __cplusplus
 }
